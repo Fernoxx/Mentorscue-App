@@ -1,0 +1,2110 @@
+Build me a complete, production-ready tuition management app called Mentorscue with the full backend and frontend logic.
+
+It should include all the features, systems, logic, and UI exactly as described below — with no omissions or bugs.
+
+The app must be lightweight, accurate, and optimized for performance.
+
+
+
+TECH STACK:
+
+
+Backend: Flask (Python)
+
+Frontend: HTML + Bootstrap 5 (No React or JS chart libs)
+
+Templates: Jinja2
+
+Database: SQLite for development → PostgreSQL for production (support both)
+
+ORM: SQLAlchemy
+
+Server: Gunicorn for WSGI
+
+Deployment Ready: Configure for Railway or Render
+
+Environment Config: .env support for secret keys & DB URL
+
+
+
+USER ROLES:
+
+The app must support multiple user roles:
+
+
+Admin: Full access to all features
+
+
+Watcher: Read-only access across the dashboard (students, tutors, attendance, dues, invoices), won't able to edit or download or make any settings change. (Can be logged into the app from same interface and same dashboard, but with restricted access)
+
+
+Accountant: Can access the same dashboard, but cannot add, edit or delete student or tutor accounts or access any settings. Can download invoices, generate invoices, mark statuses as paid for invoices, can access dues.
+
+
+Tutor: Can view their own dashboard: Attendance button, (classes, attendance), students assigned, students performance filtered weekly, monthly)
+
+
+manager (add/edit/delete) students
+
+
+Custom Roles: Admin can create additional roles with specific permissions (e.g., Manager, Billing, Support) also able to edit already existing user roles too.
+
+
+Admin should be able to create or edit user accounts or for any role:
+
+Provide username and password
+
+Assign role from dropdown
+
+
+
+Add a "Roles & Permissions" panel in the Admin Dashboard Settings:
+
+Create/Edit/Delete roles
+
+
+For each role, define access permissions:
+
+(this is mentioned in deatil in these texts bottom parts)
+
+
+
+Also define notification permissions:
+
+E.g., some roles can receive system alerts, payment reminders, dues updates..
+
+
+Each user roles, their access must be restricted based on assigned permissions.
+
+
+6. All users logins from same login page, with "Remember Me" checkbox. 
+
+
+(more details is mentioned in somewhere in this texts)
+
+
+
+
+---
+
+
+USER MANAGEMENT:
+
+
+FEATURE: Student & Tutor List Pages (Summary View Only)
+
+
+The main Tutors List and Students List pages (seperate pages such as tutors_list, students_list) should only display summary data
+
+For Tutors: Name, Mobile, Payment Status Color
+
+For Students: Name, Class, Status Color
+
+Each row is clickable and opens the detailed view page of the respective tutor/student
+
+
+FEATURE: Dedicated Add/Edit Templates for Students and Tutors
+
+
+> Separate HTML templates should be created for:
+
+
+add_student.html
+
+edit_student.html
+
+add_tutor.html
+
+edit_tutor.html
+
+
+> These templates must include:
+
+
+Clean, minimal form layout using the app's primary color palette
+
+All relevant fields pre-filled during edit
+
+
+• Add / Edit Tutor Form:
+
+
+Fields (in order):
+
+
+1. Full Name (Text input)
+
+2. Date of Birth (Date picker)
+
+3. Mobile Number (Phone input — used for login + GPay)
+
+4. UPI ID (Optional — for payments)
+
+5. Auto-generated Username (Display only: FirstNameDDMM)
+
+6. Auto-generated Password (Default: phone number)
+
+7. Copy Button for credentials
+
+8. Toggle visibility for password field
+
+9. Save / Cancel buttons
+
+
+
+> Notes:
+
+
+Username and password should be visible with a copy-to-clipboard feature.
+
+
+Admins can optionally override these fields later if needed.
+
+
+Tutor credentials are used for login to view dashboard, classes taken, invoices.
+
+
+---
+
+
+• Add / Edit Student Form:
+
+
+Fields (in order):
+
+
+1. Student Full Name (Text input)
+
+2. Parent/Guardian Name (Text input)
+
+3. Parent WhatsApp Number (Used for WhatsApp Button in Student page)
+
+4. Class Level (Dropdown: 1 to 12 or “Other -> (custom field)”)
+
+5. Subjects (Text input — comma-separated, e.g., “Maths, Physics”)
+
+6. Per-Class Fee (Currency input (₹))
+
+7. Assign Tutors (Searchable multi-select dropdown with AJAX)
+
+On selection, show:
+
+Tutor name
+
+Pay per class input for each
+
+
+8. Save / Cancel buttons
+
+
+> Notes:
+
+
+While editing a student, already assigned tutors and their pay must appear filled.
+
+
+Any change in tutors triggers UI updates to pay-rate fields.
+
+
+
+
+FEATURE: Assigning Tutors with Individual Pay Scale per Student
+
+
+> When adding or editing a Student, you must be able to assign one or more tutors with custom pay settings for each tutor:
+
+
+Tutor Assignment Field:
+
+
+Must use a searchable multi-select dropdown powered by AJAX.
+
+
+Admin types to search tutors by name.
+
+
+Select multiple tutors to assign to a student.
+
+
+
+Per-Tutor Pay Input:
+
+
+For each selected tutor, show a pay-per-class input field
+
+
+Example:
+
+
+[✓] Ayesha Khan     [ Pay per class: ₹300 ]
+
+[✓] Raman P.        [ Pay per class: ₹250 ]
+
+
+This allows flexible and custom payment structure for each student-tutor link
+
+
+These rates are stored and later used during salary invoice generation and other metrics.
+
+
+FEATURE: Individual View Page for Each Tutor and Student
+
+
+Clicking a tutor/student opens their individual profile page:
+
+
+Top section: basic info (editable via Edit button)
+
+Tabs or sections:
+
+Attendance / Class History
+
+Displays all sessions (taken or attended)
+
+Filters: Last Week, Last Month, Custom date range.
+
+
+
+Invoices Section inside tutor or student individual page:
+
+
+List of auto-generated invoices for upto the last 6 as lists (lightweight generation based on attendance; )
+
+
+Each invoice card/row includes:
+
+Invoice title (Month/Date)
+
+Amount
+
+Payment status color (Paid, Partial, Due, etc.)
+
+Action: Mark as Paid / Partially Paid (updates status)
+
+Download PDF button (uses lightweight method with MENTORSCUE branding) 
+
+
+INVOICE BILLING CYCLE (STUDENT)
+
+
+When a student is added, that day becomes their billing start date.
+
+
+The 30th day from that becomes their billing end date.
+
+
+A new invoice is generated automatically on the next day = billing end day + 1.
+
+
+The next billing cycle begins from that point.
+
+
+
+STUDENT INVOICE CONTENT:
+
+
+Each student invoice PDF must include:
+
+
+Student Name
+
+
+Class Level
+
+
+Subjects (comma-separated)
+
+
+Parent Name
+
+
+Parent WhatsApp Number
+
+
+Per-class fee:
+
+Per subject:
+
+
+Total classes attended during cycle
+
+
+Total amount due
+
+
+Payment instructions:
+
+
+GPay: 7994829844
+
+
+UPI ID: Jafaraliva869@oksbi
+
+
+
+TUTOR SALARY RECEIPTS:
+
+
+ TUTOR PAYMENT CYCLE:
+
+
+When a tutor is added, that day becomes their billing start date.
+
+
+A salary receipt is generated automatically on the 40th day.
+
+
+The next cycle begins from the next day after receipt.
+
+
+
+TUTOR RECEIPT CONTENT:
+
+
+Each receipt PDF must include:
+
+
+Tutor Name
+
+
+Mobile Number
+
+
+UPI/Bank Details (if added)
+
+
+Students taught during the period
+
+
+Number of classes taught per student
+
+
+Per-class pay per student (based on assignment)
+
+
+Total earnings (computed from all classes and pay rates)
+
+
+Total payout due
+
+
+Mobile number (constant): 8921378863
+
+
+AUTOMATED INVOICE/RECEIPT GENERATION LOGIC
+
+
+Trigger Conditions:
+
+
+Invoice/receipt generation is triggered only when someone logs in (Admin/Watcher/Non-Tutor Roles).
+
+
+NOT triggered when tutors log in.
+
+
+
+Invoice Generation Timing:
+
+
+For Students: if billing end date is today, generate invoice on login.
+
+
+For Tutors: if 40th day from last receipt is today, generate salary receipt.
+
+
+
+Additional Constraints:
+
+
+Do NOT generate invoices in background, if nobody logs in.
+
+
+Must avoid blocking the login.
+
+
+Invoices should NOT be regenerated if already created for the cycle. (You should add a seperate custom invoice section in tutor and student pages where we can filter by custom date range and download the invoice directly )
+
+
+Invoice styling is clean, minimal, and branded
+
+
+Export as lightweight PDF (no server load) Header: “MENTORSCUE” styled with primary color #344e80
+
+
+
+
+PDF Export:
+
+
+Use lightweight PDF export (e.g. WeasyPrint, xhtml2pdf, or minimal pdfkit)
+
+
+Generate PDFs on-demand, not stored permanently unless admin downloads
+
+
+Backend Storage:
+
+
+Store invoice metadata (student_id, start_date, end_date, total_amount, status) (etc anything required)
+
+
+Store tutor receipts similarly (tutor_id, start_date, end_date, total_earnings, status) (etc anything required)
+
+
+
+Performance Note:
+
+
+Avoid server load: no automatic background generation or looping checks
+
+
+Keep everything (invoice related) scoped to login-trigger only (when it's due)
+
+---
+
+
+
+ATTENDANCE SYSTEM:
+
+
+Tutors submit attendance via button in their dashboard
+
+
+Form includes: Student, Subject, Start/End Time, Rating (1–10), Remarks, Class duration (non editable, calculated by start/end time input)
+
+
+Admin sees global summary (filterable by date range, last week, last month)
+
+
+Tuition invoice generation based on attendance and per-class fee of students and salaries of tutors.
+
+
+
+---
+
+
+GLOBAL INVOICES PAGE — /invoices
+
+
+Route:
+
+
+Accessible at: /invoices
+
+
+Available to: Admins,Watchers, Accountants only (not visible to Tutors)
+
+
+
+
+---
+
+
+PAGE STRUCTURE:
+
+
+Tabs:
+
+
+Students — lists student fee invoices
+
+
+Tutors — lists tutor salary receipts
+
+
+
+Each tab loads its respective invoice type independently.
+
+
+
+---
+
+
+COMMON UI FEATURES FOR BOTH TABS
+
+
+Paginated (default 50 per page)
+
+
+Options: 25 / 50 / 100
+
+
+Student/tutor name in lists is clickable (link) to individual student, tutor page.
+
+
+
+Search bar to filter by name (student/tutor)
+
+
+Sortable by:
+
+
+Most recent (default)
+
+
+Oldest first
+
+
+Amount (high → low, low → high)
+
+
+
+Filters:
+
+
+Paid / Unpaid / Partially Paid
+
+
+Last Week, Last Month, Custom Range (max: 6 months)
+
+
+
+Download PDF button for each invoice/receipt
+
+
+Status Badge: Paid, Unpaid, Partial
+
+
+Mark as Paid/Partial manually (admin only)
+
+
+
+
+---
+
+
+STUDENT INVOICE ENTRY (in Students tab):
+
+
+Each row contains:
+
+
+Invoice Date range
+
+
+Student Name
+
+
+Class Level
+
+
+Total Fee
+
+
+Status (Paid, Unpaid, Partial)
+
+
+Last Modified Date
+
+
+View/Download button
+
+
+
+
+---
+
+
+TUTOR RECEIPT ENTRY (in Tutors tab):
+
+
+Each row contains:
+
+
+Salary Period
+
+
+Tutor Name
+
+
+Total Pay
+
+
+Status (Paid, Unpaid, Partial)
+
+
+Last Modified Date
+
+
+View/Download button
+
+
+
+
+---
+
+
+SECURITY / SHARING RULES:
+
+
+No auto-sharing of invoice links
+
+
+PDF view/download only on authenticated admin/session/Accountant Session
+
+
+Invoices/receipts are generated only if not already created
+
+
+
+
+---
+
+
+
+
+---
+
+
+Dues System (dues.html template)
+
+Objective:
+
+Build a complete, intelligent, and visually structured Dues Management System for both students and tutors inside the app. The system will track and reflect payment status using a 7-level color-coded scheme with both manual and automatic status transitions.
+
+
+---
+
+
+• GLOBAL DUES SECTION
+
+
+Route: /dues
+
+
+Layout: Two tabs — Students and Tutors
+
+
+Each tab displays:
+
+
+A list view of all students or tutors
+
+
+Background colored according to current dues status
+
+
+Clicking on an entry opens that individual’s full view
+
+
+Supports pagination: 25 / 50 / 100 entries per page
+
+
+Includes:
+
+
+Search bar (search by name)
+
+
+Filter by status color
+
+
+Sort by how long dues have been pending
+
+
+
+---
+
+
+• DUES STATUS SYSTEM (AUTO + MANUAL)
+
+
+Each student/tutor's background color reflects their current payment status based on the logic below. This logic applies to both Students and Tutors separately, with the same visual colors.
+
+
+Color Legend:
+
+
+1. White: Just joined — before first invoice is generated
+
+
+
+2. Light Yellow: 0–5 days after invoice is generated
+
+
+
+3. Dark Yellow: 6–10 days overdue (after Light Yellow period)
+
+
+° If class is attended without payment: add Orange border
+
+
+
+4. Red: Danger zone — unpaid after 10+ days
+
+
+° Add Red border if still attending without payment
+
+
+
+5. Light Purple: Partial Payment status — expires in 5 days
+
+
+6. Light Green: Paid and attending classes
+
+
+
+7. Dark Green: Paid but hasn’t attended any class since payment
+
+
+(Colours are transparent, like 0.4 or something suitable to read the texts)
+
+
+---
+
+
+• AUTOMATIC STATUS LOGIC
+
+
+Status updates automatically based on:
+
+
+Age of the most recent invoice
+
+
+Whether the user has attended or taken classes
+
+
+Whether payment or partial payment has been marked
+
+
+For partial payment: turns Light Purple, reverts to Dark Yellow after 5 days if still unpaid
+
+
+
+
+---
+
+
+• MANUAL OVERRIDE OPTIONS
+
+
+From each individual view page (student/tutor):
+
+
+Admins can manually set. 
+
+
+"Mark as Paid" button:
+
+
+Updates status to Light Green or Dark Green
+
+
+"Mark as Partial" button:
+
+
+Updates status to Light Purple
+
+
+Starts 5-day grace period
+
+
+
+
+---
+
+
+• TECHNICAL REQUIREMENTS
+
+
+Color status logic should be handled via:
+
+
+Scheduled check in /before_request for admins/watchers/accountants/others users, except tutors
+
+
+Lightweight functions that fetch most recent invoice, class activity, and dues duration (but any unpaid invoice even after one invoice marked paid, will also have affect on this colour system.
+
+
+Visual color + border indicators defined in a configurable color file (dues_colors.json) editable via Admin Dashboard
+
+
+Store each payment status + last updated date in database for tracking
+
+
+
+
+---
+
+
+• INTEGRATION
+
+
+Dues tab in navigation
+
+
+Connects with invoice records and attendance tables
+
+
+Clicking on a student/tutor opens their individual detail page with:
+
+
+Attendance history
+
+
+Invoices
+
+
+Class filter (last week/month/custom range)
+
+
+Manual payment status override controls
+
+
+
+Important Clarification (in Dues System prompt):
+
+
+> The Dues Color System is strictly visual and for payment tracking only.
+
+
+It does not interfere with invoice generation or billing cycle logic.
+
+
+A “Mark as Paid” action only updates payment status UI (and resets dues status logic), but:
+
+
+It does NOT reset the billing cycle
+
+
+It does NOT delay or advance the next invoice
+
+
+
+Invoice generation continues to follow the hybrid smart billing system as already defined:
+
+
+Students → Every 30 days from date of addition
+
+
+Tutors → Every 50 days from date of addition
+
+
+Generated automatically only when an admin or watcher logs in and a new invoice is due
+
+
+
+---
+
+
+ADMIN DASHBOARD
+
+
+The Admin Dashboard provides a centralized interface for managing all core operations of the tuition management system.
+
+
+
+---
+
+
+Summary Cards (Top Stats Section)
+
+
+Displayed at the top of the Admin Dashboard:
+
+
+Total Students
+
+
+Total Tutors
+
+
+Total Revenue from Students (sum of all paid invoices)
+
+
+Total Tutor Payouts (sum of all tutor salary receipts marked as paid)
+
+
+Net Balance = Revenue – Payouts
+
+
+
+
+Admin Navigation Menu:
+
+
+Sidebar or top navigation showing direct access to:
+
+
+1. Students
+
+2. Tutors
+
+3. Dues
+
+4. Invoices 
+
+5. Attendance
+
+6. Announcements
+
+7. Settings
+
+8. Data Flush
+
+
+
+> Admin Dashboard should not include links unrelated to admin features. Tutors and students have separate dashboards.
+
+
+Attendance page: (for admins and watchers)
+
+ Filters: Student/Tutor name, class, subject, date
+
+
+ View past class attendance data
+
+
+ Attendance editing by Admin only
+
+
+ Date filter limited to last 10 days
+
+
+
+---
+
+
+DATA FLUSH TOOL:
+
+
+Admin Dashboard → Data Flush
+
+
+Allows deletion of:
+
+
+Attendance records  (older than 2 months, 3 months, 6 months)
+
+
+Invoice records (older than 2 months, 3 months,6 months & only-marked paid)
+
+
+Logs, timestamps, temp metadata (2 month, 3 months, 6 months)
+
+
+
+Confirmation modal before flush
+
+
+Option to download ZIP backup before deletion
+
+
+Preserves core profiles (students, tutors,)
+
+
+Flush Controls UI
+
+
+Select Retention Period:
+
+
+☐ Older than 2 Months 
+
+
+☐ Older than 3 months
+
+
+☐ Older than 6 months
+
+
+
+Enhanced Data Flush Scope (Refined Prompt Segment)
+
+
+☑ Include attendance
+
+
+☑ Include invoices
+
+
+☑ Include logs
+
+
+
+
+Enhanced data flush scope:
+
+
+Include advanced clean-up for:
+
+
+ 1. Orphaned & Unlinked Data:
+
+
+Entries no longer linked to any student/tutor (e.g., old attendance entries, invoices, salary records with missing references)
+
+
+Identified by foreign key mismatch or soft-delete flag.
+
+
+Option: "Remove orphaned records"
+
+
+
+
+2. Expired System Timestamps & Logs:
+
+
+Login logs older than retention period
+
+
+Error logs, system-generated markers
+
+
+Option: "Clear system logs & timestamps"
+
+
+
+
+3. Archived or Redundant Metadata:
+
+
+Cached filters, search histories, or user-local view preferences
+
+
+These are non-critical UI-state memory footprints
+
+
+Option: "Clear metadata & UI caches"
+
+
+
+
+4. General DB Maintenance:
+
+
+Reindexing (optional) for performance
+
+
+Auto-compacting tables (for SQLite/Postgres)
+
+
+Option: "Optimize DB after flush"
+
+
+
+
+---
+
+
+Backup ZIP Includes:
+
+
+Raw .json/.csv or .xlsx of:
+
+
+Attendance logs
+
+
+Generated invoices
+
+
+Timestamps
+
+
+Orphaned data (for admin review)
+
+
+
+
+
+---
+
+
+Admin Safety Layer: 
+
+
+Core profiles never deleted, users and tutors and students never deleted unless manually do.
+
+
+
+Confirm Deletion:
+
+
+Confirmation modal with itemized summary
+
+
+Final “Flush Data” button
+
+
+
+---
+
+
+ANNOUNCEMENTS MODULE — FLASK PROMPT
+
+
+Objective: Add a modular, lightweight announcements feature visible only to tutors (in their dashboard), with admin control.
+
+
+
+---
+
+
+Module Placement
+
+
+Create a new file: announcements.py
+
+
+Register it as a Flask Blueprint with url_prefix='/announcements'
+
+
+Place inside a dedicated route folder (/routes or main app folder)
+
+
+
+
+---
+
+
+Features
+
+
+Admin Access
+
+
+Create Announcement
+
+
+Fields: Title, Message, Expiry Date (optional)
+
+
+Option to set active/inactive
+
+
+
+Edit Announcement
+
+
+Change message, title, expiry, or status
+
+
+
+Delete Announcement
+
+
+Soft delete or permanently delete with confirmation modal
+
+
+
+Deactivate Announcement
+
+
+Hides from tutor dashboards but retained in backend
+
+
+
+Confirmation modal on delete
+
+
+
+Tutor View (Read-Only)
+
+
+Show on Tutor Dashboard (top section)
+
+
+Only active announcements displayed
+
+
+Auto-hide after expiry date
+
+
+Minimal, clean design (title bold, message below)
+
+
+Maximum 3 latest announcements shown
+
+
+Expand/Collapse option if multiple
+
+
+
+
+---
+
+
+Data Structure (Model)
+
+
+class Announcement(db.Model):
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    title = db.Column(db.String(150))
+
+    message = db.Column(db.Text)
+
+    is_active = db.Column(db.Boolean, default=True)
+
+    expiry_date = db.Column(db.Date)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+
+---
+
+
+Templates
+
+
+templates/admin/announcements.html
+
+
+List + Add/Edit form
+
+
+
+templates/components/announcement_item.html
+
+
+Used for tutor dashboard rendering
+
+
+
+
+---
+
+
+Storage Notes
+
+
+Very lightweight: only essential fields stored
+
+
+No attachments or media
+
+
+No versioning required
+
+
+Auto-deletion logic not mandatory (manual cleanup optional)
+
+
+---
+
+
+Integration
+
+
+Tutors see announcements only in their dashboard
+
+
+Admins access /announcements for managing them
+
+
+Optional: small bell icon indicator for new/active notices
+
+
+—
+
+
+
+Here is the full SETTINGS section prompt for your MentorsCue app — complete and detailed, structured for a full-stack developer or AI agent to implement exactly:
+
+
+
+---
+
+
+SETTINGS SECTION
+
+
+Build a fully functional and modular Settings page in the Admin Dashboard of the Mentorscue app with the following features:
+
+
+
+---
+
+
+1. Role Management
+
+
+Allow the Admin to manage custom user roles with fine-grained access control.
+
+
+Features:
+
+
+Create, Edit, Delete Roles
+
+
+Fields:
+
+
+Role Name (e.g., Watcher, Accountant)
+
+
+Description
+
+
+Permissions toggles:
+
+
+View Students
+
+
+View Tutors
+
+
+View Attendance
+
+
+View Invoices/Receipts
+
+
+Download Invoices/Receipts
+
+
+View Dues
+
+
+View Announcements
+
+
+Access Dashboard
+
+
+View/Add/Edit Announcements
+
+
+Access Settings
+
+
+Access Data Flush
+
+
+Access Dashboard Summaries
+
+
+Add/Edit/Delete Students or Tutors
+
+
+
+Notification Toggles:
+
+
+See Announcements
+
+
+See Dues Alerts
+
+
+See Invoice Reminders
+
+
+
+
+Role Assignment:
+
+
+On Add/Edit User (Watcher, etc.), allow assigning any defined role from a dropdown
+
+
+
+Permission Enforcements:
+
+
+Backend route decorators for role-based access (e.g., @requires_permission("view_students"))
+
+
+Roles and permissions stored in config (e.g., roles_config.json), not in DB for performance
+
+
+
+Default Role Examples:
+
+
+Admin – full access
+
+
+Watcher – read-only for all major sections
+
+
+Accountant – can view invoices and dues, download invoices, can view student and tutors, but not edit students/tutors
+
+
+Manager - Can view, add, edit, delete - student and tutors. 
+
+
+
+Role-Based Access & User Login System (Extendable Roles)
+
+
+Implement a full role-based access control (RBAC) system for all user accounts, integrated into the existing admin login system.
+
+
+
+---
+
+
+User Roles:
+
+
+All users (including Admin, Watcher, Accountant, etc. except tutors) share the same login screen.
+
+
+Roles are assigned at user creation via a dropdown.
+
+
+Default roles:
+
+
+Admin – Full access
+
+
+Watcher – Read-only access to all data
+
+
+Accountant – Access only to dues, invoices, payouts
+
+
+Custom roles – Admin-defined roles with toggleable permissions
+
+
+
+
+
+---
+
+
+Permissions Config:
+
+
+Each role maps to a permission set like:
+
+
+
+{
+
+  "Admin": ["view_all", "edit_students", "edit_tutors", "manage_invoices", "settings_access"],
+
+  "Watcher": ["view_all"],
+
+  "Accountant": ["view_dues", "view_invoices", "mark_invoices_paid"]
+
+}
+
+
+Store this configuration in a lightweight config file like roles_config.json (not the database).
+
+
+Admin can manage (Add/Edit/Delete) roles from the Settings page:
+
+
+Add new roles with custom permissions
+
+
+Toggle specific feature access per role
+
+
+Live preview of role access rights
+
+
+
+
+
+---
+
+
+Access Control System:
+
+
+Use decorators in Flask routes:
+
+
+
+@requires_permission("edit_students")
+
+def edit_student(id):
+
+    ...
+
+
+Template-level access via:
+
+
+
+{% if 'manage_invoices' in current_user.permissions %}
+
+    <button>Edit Invoice</button>
+
+{% endif %}
+
+
+Prevent backdoor access: non-authorized users are blocked from accessing restricted routes even if they type the URL manually.
+
+
+
+
+---
+
+
+User Management
+
+
+Admin can add users from a "Users" section (name, username, password, role).
+
+
+User's role is stored along with their credentials.
+
+
+On login, system loads their permissions into session.
+
+
+
+---
+
+
+Shared Dashboard UI, Role-Limited Features
+
+
+No need for multiple dashboards.
+
+
+All roles are routed to the same dashboard UI but:
+
+
+Only see data and actions they’re permitted to
+
+
+E.g., Watcher sees class lists but no Edit/Delete buttons
+
+
+Accountant sees invoices but not student/tutor management
+
+
+
+Permissions also control sidebar links and navigation visibility
+
+
+
+
+—
+
+
+Notes:
+
+
+Admin can change a user's role at any time.
+
+
+System auto-updates access on next login/session refresh.
+
+
+All permissions and role settings stored in config (not DB) for performance.
+
+
+
+---
+
+
+2. Invoice Settings
+
+
+Admin controls for branding, generation logic, and format of invoices.
+
+
+Features:
+
+
+Global Invoice Prefix
+
+
+Input field to customize (e.g., MC-INV-)
+
+
+Applies to both Student and Tutor invoices
+
+
+Invoice format: MC-INV-00001, MC-INV-00002, etc.
+
+
+
+Counters
+
+
+Separate auto-increment counters for:
+
+
+Student Invoices
+
+
+Tutor Salary Receipts
+
+
+Stored in config (invoice_counters.json)
+
+
+
+
+
+Maximum Invoice History
+
+
+Limit invoice filters to max of 6 months
+
+
+Configurable: max_invoice_filter_months = 6
+
+
+
+PDF Branding Settings
+
+
+Header text: MENTORSCUE (in primary color)
+
+
+Contact info always shown:
+
+
+Mobile: 
+
+
+For students only: 
+
+
+GPay: 
+
+
+UPI: 
+
+
+
+Download option only (no auto-sharing or links)
+
+
+Styled using app’s primary/secondary colors
+
+
+
+---
+
+
+3. Theme Customization
+
+
+Admin can customize app appearance and preview changes live.
+
+
+Features:
+
+
+Primary App Colors (Editable with color picker or HEX input)
+
+
+Primary Color: #344e80
+
+
+Secondary Color: #43a24c
+
+
+Background Color: #cedce7
+
+
+Text Color: #293958
+
+
+
+Fonts
+
+
+Title Font: Cormorant Garamond
+
+
+Body Font: Figtree
+
+
+
+Live Preview:
+
+
+Preview UI updates without full page reload
+
+
+Reset-to-default option
+
+
+
+Storage:
+
+
+All visual settings saved in a lightweight config file (theme_config.json) — not in database
+
+
+
+
+4. Due Color Customization
+
+
+Allows Admin to modify the color codes used for payment status in the Dues section.
+
+
+Features:
+
+
+7 Payment Status Levels:
+
+
+1. White – Just joined
+
+
+
+2. Light Yellow – Recent invoice (0–5 days)
+
+
+
+3. Dark Yellow – Overdue (5–10 days)
+
+
+
+4. Orange Border – Attended classes with dues
+
+
+
+5. Red – Long overdue
+
+
+
+6. Light Purple – Partial paid
+
+
+
+7. Green (Light & Dark) – Paid with or without attendance
+
+
+
+
+Color Pickers for Each Level:
+
+
+Change both background and border color
+
+
+
+Live Preview Section
+
+
+Shows how each status will look in the Dues list
+
+
+
+Reset to Defaults
+
+
+One-click reset button
+
+
+
+Storage:
+
+
+Saved in due_colors.json config file
+
+
+
+—
+
+
+CONTACT / WHATSAPP INTEGRATION
+
+
+Enable direct WhatsApp contact options for both students (via parent) and tutors from their individual profile pages.
+
+---
+
+
+Student Page:
+
+
+Parent WhatsApp Number field is added to the student profile (during add/edit).
+
+
+A WhatsApp Message button appears on the student’s individual view page.
+
+
+Clicking it opens: https://wa.me/<ParentWhatsAppNumber>
+
+
+
+No invoice PDF or links are automatically attached or shared.
+
+
+Message opens cleanly in browser or WhatsApp app.
+
+
+---
+
+
+Tutor Page:
+
+
+Uses the tutor’s mobile number as their WhatsApp contact.
+
+
+Same WhatsApp Message button appears on their individual view page.
+
+
+Opens: https://wa.me/<TutorMobileNumber>
+
+
+
+Lightweight, no file handling or link sharing involved.
+
+
+---
+
+
+Additional Notes:
+
+
+All numbers are sanitized to remove +91 or dashes for compatibility with wa.me format.
+
+Button UI is minimal, styled to match the app’s primary color (#344e80).
+
+Fully client-side; no backend processing needed.
+
+
+---
+
+
+PAGINATION (All Lists)
+
+
+Students, Tutors, Invoices, Dues, etc.
+
+
+Default: 50 per page
+
+
+Selectable: 25, 50, 100 per page
+
+
+
+---
+
+
+NOTIFICATION CENTER
+
+
+Admin sees:
+
+
+Unpaid invoices
+
+
+Tutors with unpaid dues
+
+
+Partial payments
+
+
+Overdue warnings
+
+
+
+Watcher sees the same (view-only)
+
+
+Accountant sees finance-only alerts
+
+
+Admin can toggle which roles see what in Settings → Notification Visibility
+
+
+Config-based, no overhead
+
+
+
+---
+
+
+PERFORMANCE / DEPLOYMENT
+
+
+Minimal dependencies
+
+
+No Chart.js or JS-heavy features
+
+
+Responsive Bootstrap-based UI
+
+
+SQLite for dev, PostgreSQL for prod
+
+
+Gunicorn ready
+
+
+.env supported
+
+
+Fully deployable on Railway or Render (no CRON jobs used)
+
+
+All systems run manually or from minimal preloaded logic (smart hybrid invoice system)
+
+
+Config-based settings for minimal server/database load
+
+
+
+
+---
+
+
+DO NOT:
+
+
+No public signups
+
+
+No React or frontend frameworks
+
+
+No auto CRONs
+
+
+No heavy file usage
+
+
+No unnecessary animations or scripts
+
+
+
+---
+
+
+FINAL INSTRUCTION:
+
+
+Please generate all required backend and frontend code for the complete MentorsCue app, based on all the detailed prompts and feature definitions above.
+
+
+
+
+
+---
+
+
+Must Include:
+
+
+All Flask backend logic
+
+
+HTML templates (Jinja2) for each view
+
+
+All necessary database models (SQLAlchemy / SQLite preferred)
+
+
+Proper routing and blueprint structure
+
+
+All UI components styled cleanly using TailwindCSS or Bootstrap (readable contrast between text and background)
+
+
+Full user-friendly frontend for admin, watcher, and other custom roles
+
+
+Dynamic date filters, invoice generators, multi-select dropdowns, etc.
+
+
+
+
+---
+
+
+Deployment-Ready:
+
+
+The code should run without errors when deployed on Render, Railway, or Replit
+
+
+Environment configs and requirements must be properly defined (requirements.txt, runtime.txt, .env usage)
+
+
+Final app must be fully working with no missing functionality, no broken buttons, and with clean UI/UX
+
+
+Design must maintain a professional and responsive layout
+
+
+Use pagination, filters, and modals where specified
+
+
+
+
+---
+
+
+Make sure everything mentioned in this full prompt is:
+
+
+Implemented exactly as described
+
+
+Tested for logic and user interaction
+
+
+Optimized for performance (especially invoice logic)
+
+
+Perfect — here is the final instruction you can append to your full app prompt:
+
+
+
+---
+
+
+Final Note – Template Coverage
+
+
+If you have forgotten to create or missed any of the following template files, please ensure they are generated completely and correctly:
+
+
+add_user.html, edit_user.html, user_list.html
+
+
+add_role.html, edit_role.html, role_list.html
+
+
+students_list.html, add_student.html, edit_student.html, student_profile.html
+
+
+tutors_list.html, add_tutor.html, edit_tutor.html, tutor_profile.html
+
+
+global_invoices.html, invoice_view.html
+
+
+dues.html, student_due_profile.html, tutor_due_profile.html
+
+
+admin_dashboard.html
+
+
+attendance.html
+
+
+settings.html
+
+
+data_flush.html
+
+
+announcements.html
+
+
+login.html, unauthorized.html
+
+
+Make sure all required code files, database models, template files, and logic are implemented without omissions — the app should be production-ready and fully functional on Render or Railway.
+
