@@ -22,7 +22,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h4 class="fw-bold">{{ User.query.count() }}</h4>
+                            <h4 class="fw-bold">{{ total_users }}</h4>
                             <p class="mb-0">Total Users</p>
                         </div>
                         <div class="align-self-center">
@@ -43,7 +43,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h4 class="fw-bold">{{ Role.query.count() }}</h4>
+                            <h4 class="fw-bold">{{ total_roles }}</h4>
                             <p class="mb-0">System Roles</p>
                         </div>
                         <div class="align-self-center">
@@ -64,7 +64,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h4 class="fw-bold">{{ User.query.filter(User.last_login.isnot(None)).count() }}</h4>
+                            <h4 class="fw-bold">{{ active_users }}</h4>
                             <p class="mb-0">Active Users</p>
                         </div>
                         <div class="align-self-center">
@@ -85,7 +85,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h4 class="fw-bold">{{ (StudentInvoice.query.count() + TutorReceipt.query.count()) }}</h4>
+                            <h4 class="fw-bold">{{ total_documents }}</h4>
                             <p class="mb-0">Total Documents</p>
                         </div>
                         <div class="align-self-center">
@@ -115,13 +115,6 @@
                     <div class="row">
                         <div class="col-md-6">
                             <h6 class="text-primary mb-3">User Distribution</h6>
-                            {% set user_roles = {} %}
-                            {% for user in User.query.all() %}
-                                {% for role in user.roles %}
-                                    {% if user_roles.update({role.name: user_roles.get(role.name, 0) + 1}) %}{% endif %}
-                                {% endfor %}
-                            {% endfor %}
-                            
                             {% for role_name, count in user_roles.items() %}
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span>{{ role_name }}</span>
@@ -134,7 +127,7 @@
                                             {% elif role_name == 'Manager' %}bg-warning
                                             {% else %}bg-secondary
                                             {% endif %}" 
-                                            style="width: {{ (count / User.query.count() * 100)|round }}%"></div>
+                                            style="width: {{ (count / total_users * 100)|round }}%"></div>
                                     </div>
                                     <span class="badge bg-secondary">{{ count }}</span>
                                 </div>
@@ -144,11 +137,6 @@
                         
                         <div class="col-md-6">
                             <h6 class="text-primary mb-3">Financial Summary</h6>
-                            {% set total_revenue = StudentInvoice.query.filter_by(status='Paid').with_entities(db.func.sum(StudentInvoice.total_amount)).scalar() or 0 %}
-                            {% set pending_revenue = StudentInvoice.query.filter_by(status='Due').with_entities(db.func.sum(StudentInvoice.total_amount)).scalar() or 0 %}
-                            {% set total_expenses = TutorReceipt.query.filter_by(status='Paid').with_entities(db.func.sum(TutorReceipt.total_earnings)).scalar() or 0 %}
-                            {% set pending_expenses = TutorReceipt.query.filter_by(status='Due').with_entities(db.func.sum(TutorReceipt.total_earnings)).scalar() or 0 %}
-                            
                             <div class="row text-center">
                                 <div class="col-6 mb-3">
                                     <div class="border rounded p-2">
@@ -189,10 +177,6 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    {% set inactive_users = User.query.filter_by(is_active=False).count() %}
-                    {% set overdue_invoices = StudentInvoice.query.filter_by(status='Due').count() %}
-                    {% set pending_receipts = TutorReceipt.query.filter_by(status='Due').count() %}
-                    
                     {% if inactive_users > 0 %}
                     <div class="alert alert-warning py-2 mb-2">
                         <small><i class="fas fa-user-slash me-2"></i>{{ inactive_users }} inactive user(s)</small>
@@ -304,7 +288,7 @@
                             </thead>
                             <tbody>
                                 <!-- Recent login activities -->
-                                {% for user in User.query.filter(User.last_login.isnot(None)).order_by(User.last_login.desc()).limit(10) %}
+                                {% for user in recent_users %}
                                 <tr>
                                     <td><small>{{ user.last_login.strftime('%d/%m %H:%M') if user.last_login else 'Never' }}</small></td>
                                     <td>

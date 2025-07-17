@@ -16,9 +16,9 @@ app.register_blueprint(auth)
 # Make Permission class available in templates
 @app.context_processor
 def inject_permissions():
-    return dict(Permission=Permission, Student=Student, Tutor=Tutor, 
+    return dict(Permission=Permission, User=User, Role=Role, Student=Student, Tutor=Tutor, 
                 Attendance=Attendance, StudentInvoice=StudentInvoice, 
-                TutorReceipt=TutorReceipt, datetime=datetime)
+                TutorReceipt=TutorReceipt, datetime=datetime, db=db)
 
 # Main routes
 @app.route('/')
@@ -26,7 +26,51 @@ def inject_permissions():
 def dashboard():
     if current_user.is_tutor_user():
         return redirect(url_for('tutor_dashboard'))
-    return render_template('dashboard.html')
+    
+    # Prepare dashboard data
+    if current_user.is_admin():
+        # Admin Dashboard Data
+        total_users = User.query.count()
+        total_roles = Role.query.count()
+        active_users = User.query.filter(User.last_login.isnot(None)).count()
+        total_documents = StudentInvoice.query.count() + TutorReceipt.query.count()
+        
+        # Financial summary
+        total_revenue = db.session.query(db.func.sum(StudentInvoice.total_amount)).filter_by(status='Paid').scalar() or 0
+        pending_revenue = db.session.query(db.func.sum(StudentInvoice.total_amount)).filter_by(status='Due').scalar() or 0
+        total_expenses = db.session.query(db.func.sum(TutorReceipt.total_earnings)).filter_by(status='Paid').scalar() or 0
+        pending_expenses = db.session.query(db.func.sum(TutorReceipt.total_earnings)).filter_by(status='Due').scalar() or 0
+        
+        # System alerts
+        inactive_users = User.query.filter_by(is_active=False).count()
+        overdue_invoices = StudentInvoice.query.filter_by(status='Due').count()
+        pending_receipts = TutorReceipt.query.filter_by(status='Due').count()
+        
+        # User role distribution
+        user_roles = {}
+        for user in User.query.all():
+            for role in user.roles:
+                user_roles[role.name] = user_roles.get(role.name, 0) + 1
+        
+        # Recent activity (last 10 logins)
+        recent_users = User.query.filter(User.last_login.isnot(None)).order_by(User.last_login.desc()).limit(10).all()
+        
+        return render_template('admin_dashboard.html',
+                             total_users=total_users,
+                             total_roles=total_roles,
+                             active_users=active_users,
+                             total_documents=total_documents,
+                             total_revenue=total_revenue,
+                             pending_revenue=pending_revenue,
+                             total_expenses=total_expenses,
+                             pending_expenses=pending_expenses,
+                             inactive_users=inactive_users,
+                             overdue_invoices=overdue_invoices,
+                             pending_receipts=pending_receipts,
+                             user_roles=user_roles,
+                             recent_users=recent_users)
+    else:
+        return render_template('dashboard.html')
 
 @app.route('/tutor-dashboard')
 @login_required
