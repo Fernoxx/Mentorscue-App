@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance - MENTORSCUE{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 text-primary">
+                    <i class="fas fa-calendar-check me-2"></i>Record Attendance
+                </h1>
+                {% if not current_user.is_tutor_user() %}
+                <div class="btn-group">
+                    <button class="btn btn-outline-primary active" onclick="showView('record')">Record New</button>
+                    <button class="btn btn-outline-primary" onclick="showView('history')">View History</button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Record Attendance Form -->
+    <div id="recordView">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-plus-circle me-2"></i>New Attendance Record
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" id="attendanceForm">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="student_id" class="form-label">Student *</label>
+                                    <select class="form-select" id="student_id" name="student_id" required>
+                                        <option value="">Select Student</option>
+                                        {% for student in students %}
+                                        <option value="{{ student.id }}">{{ student.full_name }} (Class {{ student.class_level }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="tutor_id" class="form-label">Tutor *</label>
+                                    <select class="form-select" id="tutor_id" name="tutor_id" required {% if current_user.is_tutor_user() and tutors|length == 1 %}readonly{% endif %}>
+                                        <option value="">Select Tutor</option>
+                                        {% for tutor in tutors %}
+                                        <option value="{{ tutor.id }}" {% if current_user.is_tutor_user() and tutors|length == 1 %}selected{% endif %}>
+                                            {{ tutor.full_name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="subject" class="form-label">Subject *</label>
+                                    <input type="text" class="form-control" id="subject" name="subject" 
+                                           placeholder="e.g., Mathematics" required>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="date" class="form-label">Date *</label>
+                                    <input type="date" class="form-control" id="date" name="date" 
+                                           value="{{ datetime.now().strftime('%Y-%m-%d') }}" required>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-3 mb-3">
+                                    <label for="start_time" class="form-label">Start Time *</label>
+                                    <input type="time" class="form-control" id="start_time" name="start_time" required>
+                                </div>
+                                
+                                <div class="col-md-3 mb-3">
+                                    <label for="end_time" class="form-label">End Time *</label>
+                                    <input type="time" class="form-control" id="end_time" name="end_time" required>
+                                </div>
+                                
+                                <div class="col-md-3 mb-3">
+                                    <label for="duration" class="form-label">Duration</label>
+                                    <input type="text" class="form-control" id="duration" name="duration" 
+                                           readonly placeholder="Auto-calculated">
+                                </div>
+                                
+                                <div class="col-md-3 mb-3">
+                                    <label for="rating" class="form-label">Rating (1-10) *</label>
+                                    <select class="form-select" id="rating" name="rating" required>
+                                        <option value="">Select Rating</option>
+                                        {% for i in range(1, 11) %}
+                                        <option value="{{ i }}">{{ i }} - {% if i <= 3 %}Poor{% elif i <= 5 %}Fair{% elif i <= 7 %}Good{% elif i <= 9 %}Very Good{% else %}Excellent{% endif %}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="remarks" class="form-label">Remarks (Optional)</label>
+                                <textarea class="form-control" id="remarks" name="remarks" rows="3" 
+                                          placeholder="Additional notes about the class..."></textarea>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <button type="button" class="btn btn-secondary" onclick="resetForm()">
+                                    <i class="fas fa-undo me-2"></i>Reset
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Record Attendance
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Attendance History -->
+    {% if not current_user.is_tutor_user() %}
+    <div id="historyView" style="display: none;">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-history me-2"></i>Attendance History
+                            </h5>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary active" onclick="filterHistory('all')">All</button>
+                                <button class="btn btn-outline-primary" onclick="filterHistory('today')">Today</button>
+                                <button class="btn btn-outline-primary" onclick="filterHistory('week')">This Week</button>
+                                <button class="btn btn-outline-primary" onclick="filterHistory('month')">This Month</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="historyTable">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Student</th>
+                                        <th>Tutor</th>
+                                        <th>Subject</th>
+                                        <th>Duration</th>
+                                        <th>Rating</th>
+                                        <th>Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- This would be populated via AJAX or server-side rendering -->
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-4">
+                                            <i class="fas fa-calendar-times fa-2x mb-2"></i><br>
+                                            No attendance records found
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Calculate duration when start/end times change
+function calculateDuration() {
+    const startTime = document.getElementById('start_time').value;
+    const endTime = document.getElementById('end_time').value;
+    
+    if (startTime && endTime) {
+        const start = new Date(`1970-01-01T${startTime}:00`);
+        const end = new Date(`1970-01-01T${endTime}:00`);
+        
+        if (end > start) {
+            const diff = end - start;
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(minutes / 60);
+            const remainingMinutes = minutes % 60;
+            
+            let durationText = '';
+            if (hours > 0) {
+                durationText = `${hours}h ${remainingMinutes}m`;
+            } else {
+                durationText = `${remainingMinutes}m`;
+            }
+            
+            document.getElementById('duration').value = durationText;
+        } else {
+            document.getElementById('duration').value = '';
+        }
+    }
+}
+
+// Event listeners for time inputs
+document.getElementById('start_time').addEventListener('change', calculateDuration);
+document.getElementById('end_time').addEventListener('change', calculateDuration);
+
+// Form validation
+document.getElementById('attendanceForm').addEventListener('submit', function(e) {
+    const startTime = document.getElementById('start_time').value;
+    const endTime = document.getElementById('end_time').value;
+    
+    if (startTime && endTime) {
+        const start = new Date(`1970-01-01T${startTime}:00`);
+        const end = new Date(`1970-01-01T${endTime}:00`);
+        
+        if (end <= start) {
+            e.preventDefault();
+            alert('End time must be after start time');
+            return false;
+        }
+    }
+});
+
+function resetForm() {
+    document.getElementById('attendanceForm').reset();
+    document.getElementById('duration').value = '';
+}
+
+function showView(view) {
+    const recordView = document.getElementById('recordView');
+    const historyView = document.getElementById('historyView');
+    const buttons = document.querySelectorAll('.btn-group .btn');
+    
+    // Update active button
+    buttons.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    if (view === 'record') {
+        recordView.style.display = 'block';
+        historyView.style.display = 'none';
+    } else {
+        recordView.style.display = 'none';
+        historyView.style.display = 'block';
+        loadAttendanceHistory();
+    }
+}
+
+function filterHistory(period) {
+    const buttons = document.querySelectorAll('#historyView .btn-group .btn');
+    buttons.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    // Filter logic would go here
+    console.log('Filtering history for period:', period);
+}
+
+function loadAttendanceHistory() {
+    // This would typically load data via AJAX
+    console.log('Loading attendance history...');
+}
+
+// Auto-fill current time when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    const now = new Date();
+    const currentTime = now.getHours().toString().padStart(2, '0') + ':' + 
+                       now.getMinutes().toString().padStart(2, '0');
+    
+    // Only set if fields are empty
+    if (!document.getElementById('start_time').value) {
+        document.getElementById('start_time').value = currentTime;
+    }
+});
+</script>
+{% endblock %}

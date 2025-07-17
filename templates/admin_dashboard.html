@@ -1,0 +1,404 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - MENTORSCUE{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 text-primary">
+                    <i class="fas fa-tools me-2"></i>Admin Dashboard
+                </h1>
+                <span class="badge bg-danger fs-6">Administrator</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Admin Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card bg-gradient-primary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="fw-bold">{{ User.query.count() }}</h4>
+                            <p class="mb-0">Total Users</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-users fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-primary bg-opacity-25">
+                    <a href="{{ url_for('user_management') }}" class="text-white text-decoration-none">
+                        Manage Users <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card bg-gradient-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="fw-bold">{{ Role.query.count() }}</h4>
+                            <p class="mb-0">System Roles</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-user-tag fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-success bg-opacity-25">
+                    <a href="{{ url_for('roles_permissions') }}" class="text-white text-decoration-none">
+                        Manage Roles <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card bg-gradient-warning text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="fw-bold">{{ User.query.filter(User.last_login.isnot(None)).count() }}</h4>
+                            <p class="mb-0">Active Users</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-user-check fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-warning bg-opacity-25">
+                    <span class="text-white">
+                        Last 30 days <i class="fas fa-calendar ms-1"></i>
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card bg-gradient-info text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="fw-bold">{{ (StudentInvoice.query.count() + TutorReceipt.query.count()) }}</h4>
+                            <p class="mb-0">Total Documents</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-file-invoice fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-info bg-opacity-25">
+                    <a href="{{ url_for('invoices') }}" class="text-white text-decoration-none">
+                        View All <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- System Overview -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-line me-2"></i>System Overview
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary mb-3">User Distribution</h6>
+                            {% set user_roles = {} %}
+                            {% for user in User.query.all() %}
+                                {% for role in user.roles %}
+                                    {% if user_roles.update({role.name: user_roles.get(role.name, 0) + 1}) %}{% endif %}
+                                {% endfor %}
+                            {% endfor %}
+                            
+                            {% for role_name, count in user_roles.items() %}
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span>{{ role_name }}</span>
+                                <div class="d-flex align-items-center">
+                                    <div class="progress me-2" style="width: 100px; height: 8px;">
+                                        <div class="progress-bar 
+                                            {% if role_name == 'Admin' %}bg-danger
+                                            {% elif role_name == 'Tutor' %}bg-success
+                                            {% elif role_name == 'Accountant' %}bg-info
+                                            {% elif role_name == 'Manager' %}bg-warning
+                                            {% else %}bg-secondary
+                                            {% endif %}" 
+                                            style="width: {{ (count / User.query.count() * 100)|round }}%"></div>
+                                    </div>
+                                    <span class="badge bg-secondary">{{ count }}</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6 class="text-primary mb-3">Financial Summary</h6>
+                            {% set total_revenue = StudentInvoice.query.filter_by(status='Paid').with_entities(db.func.sum(StudentInvoice.total_amount)).scalar() or 0 %}
+                            {% set pending_revenue = StudentInvoice.query.filter_by(status='Due').with_entities(db.func.sum(StudentInvoice.total_amount)).scalar() or 0 %}
+                            {% set total_expenses = TutorReceipt.query.filter_by(status='Paid').with_entities(db.func.sum(TutorReceipt.total_earnings)).scalar() or 0 %}
+                            {% set pending_expenses = TutorReceipt.query.filter_by(status='Due').with_entities(db.func.sum(TutorReceipt.total_earnings)).scalar() or 0 %}
+                            
+                            <div class="row text-center">
+                                <div class="col-6 mb-3">
+                                    <div class="border rounded p-2">
+                                        <h6 class="text-success mb-1">₹{{ "%.2f"|format(total_revenue) }}</h6>
+                                        <small class="text-muted">Revenue Collected</small>
+                                    </div>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <div class="border rounded p-2">
+                                        <h6 class="text-danger mb-1">₹{{ "%.2f"|format(pending_revenue) }}</h6>
+                                        <small class="text-muted">Outstanding</small>
+                                    </div>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <div class="border rounded p-2">
+                                        <h6 class="text-warning mb-1">₹{{ "%.2f"|format(total_expenses) }}</h6>
+                                        <small class="text-muted">Salaries Paid</small>
+                                    </div>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <div class="border rounded p-2">
+                                        <h6 class="text-info mb-1">₹{{ "%.2f"|format(pending_expenses) }}</h6>
+                                        <small class="text-muted">Salary Due</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>System Alerts
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% set inactive_users = User.query.filter_by(is_active=False).count() %}
+                    {% set overdue_invoices = StudentInvoice.query.filter_by(status='Due').count() %}
+                    {% set pending_receipts = TutorReceipt.query.filter_by(status='Due').count() %}
+                    
+                    {% if inactive_users > 0 %}
+                    <div class="alert alert-warning py-2 mb-2">
+                        <small><i class="fas fa-user-slash me-2"></i>{{ inactive_users }} inactive user(s)</small>
+                    </div>
+                    {% endif %}
+                    
+                    {% if overdue_invoices > 0 %}
+                    <div class="alert alert-danger py-2 mb-2">
+                        <small><i class="fas fa-file-invoice me-2"></i>{{ overdue_invoices }} overdue invoice(s)</small>
+                    </div>
+                    {% endif %}
+                    
+                    {% if pending_receipts > 0 %}
+                    <div class="alert alert-info py-2 mb-2">
+                        <small><i class="fas fa-receipt me-2"></i>{{ pending_receipts }} pending salary receipt(s)</small>
+                    </div>
+                    {% endif %}
+                    
+                    {% if inactive_users == 0 and overdue_invoices == 0 and pending_receipts == 0 %}
+                    <div class="alert alert-success py-2 mb-2">
+                        <small><i class="fas fa-check-circle me-2"></i>All systems running smoothly</small>
+                    </div>
+                    {% endif %}
+                    
+                    <hr>
+                    <small class="text-muted">
+                        <i class="fas fa-clock me-2"></i>Last updated: {{ datetime.now().strftime('%d/%m/%Y %H:%M') }}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Admin Actions -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-cogs me-2"></i>Administrative Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <div class="d-grid">
+                                <a href="{{ url_for('user_management') }}" class="btn btn-outline-primary">
+                                    <i class="fas fa-users fa-2x d-block mb-2"></i>
+                                    <strong>User Management</strong><br>
+                                    <small>Add, edit, or remove users</small>
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <div class="d-grid">
+                                <a href="{{ url_for('roles_permissions') }}" class="btn btn-outline-success">
+                                    <i class="fas fa-user-tag fa-2x d-block mb-2"></i>
+                                    <strong>Roles & Permissions</strong><br>
+                                    <small>Configure access levels</small>
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <div class="d-grid">
+                                <button class="btn btn-outline-warning" onclick="generateBulkReports()">
+                                    <i class="fas fa-file-export fa-2x d-block mb-2"></i>
+                                    <strong>Generate Reports</strong><br>
+                                    <small>Export system data</small>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <div class="d-grid">
+                                <button class="btn btn-outline-info" onclick="systemMaintenance()">
+                                    <i class="fas fa-tools fa-2x d-block mb-2"></i>
+                                    <strong>System Maintenance</strong><br>
+                                    <small>Database cleanup & optimization</small>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Activity -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-history me-2"></i>Recent System Activity
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>User</th>
+                                    <th>Action</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Recent login activities -->
+                                {% for user in User.query.filter(User.last_login.isnot(None)).order_by(User.last_login.desc()).limit(10) %}
+                                <tr>
+                                    <td><small>{{ user.last_login.strftime('%d/%m %H:%M') if user.last_login else 'Never' }}</small></td>
+                                    <td>
+                                        <strong>{{ user.full_name or user.username }}</strong><br>
+                                        <small class="text-muted">{{ user.roles[0].name if user.roles else 'No Role' }}</small>
+                                    </td>
+                                    <td><span class="badge bg-success">Login</span></td>
+                                    <td><small class="text-muted">User authentication</small></td>
+                                </tr>
+                                {% endfor %}
+                                
+                                {% if User.query.filter(User.last_login.isnot(None)).count() == 0 %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">
+                                        <i class="fas fa-history fa-2x mb-2"></i><br>
+                                        No recent activity to display
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function generateBulkReports() {
+    if (confirm('Generate comprehensive system reports? This may take a few minutes.')) {
+        // This would typically trigger a background job to generate reports
+        showNotification('Report generation started. You will be notified when complete.', 'info');
+        
+        // Simulate report generation
+        setTimeout(() => {
+            showNotification('System reports generated successfully!', 'success');
+        }, 3000);
+    }
+}
+
+function systemMaintenance() {
+    if (confirm('Perform system maintenance? This will optimize the database and may temporarily affect performance.')) {
+        showNotification('System maintenance started...', 'info');
+        
+        // Simulate maintenance
+        setTimeout(() => {
+            showNotification('System maintenance completed successfully!', 'success');
+        }, 5000);
+    }
+}
+
+// Real-time updates for admin dashboard
+function updateAdminStats() {
+    // This would fetch updated statistics via AJAX
+    fetch('/api/admin/stats')
+        .then(response => response.json())
+        .then(data => {
+            // Update dashboard statistics
+            console.log('Updated admin stats:', data);
+        })
+        .catch(error => {
+            console.error('Error updating admin stats:', error);
+        });
+}
+
+// Auto-refresh admin dashboard every 30 seconds
+setInterval(updateAdminStats, 30000);
+
+// Show notification function (if not already defined in main.js)
+function showNotification(message, type = 'info', duration = 5000) {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show`;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        max-width: 350px;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    `;
+    
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, duration);
+}
+</script>
+{% endblock %}

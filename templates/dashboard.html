@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - MENTORSCUE{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 text-primary">
+                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                </h1>
+                <span class="badge bg-primary fs-6">{{ current_user.roles[0].name if current_user.roles else 'User' }}</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        {% if current_user.has_permission(Permission.VIEW_STUDENTS) %}
+        <div class="col-md-3 mb-3">
+            <div class="card bg-gradient-primary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="fw-bold">{{ Student.query.count() }}</h4>
+                            <p class="mb-0">Students</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-user-graduate fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-primary bg-opacity-25">
+                    <a href="{{ url_for('students_list') }}" class="text-white text-decoration-none">
+                        View Details <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if current_user.has_permission(Permission.VIEW_TUTORS) %}
+        <div class="col-md-3 mb-3">
+            <div class="card bg-gradient-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="fw-bold">{{ Tutor.query.count() }}</h4>
+                            <p class="mb-0">Tutors</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-chalkboard-teacher fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-success bg-opacity-25">
+                    <a href="{{ url_for('tutors_list') }}" class="text-white text-decoration-none">
+                        View Details <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if current_user.has_permission(Permission.VIEW_ATTENDANCE) %}
+        <div class="col-md-3 mb-3">
+            <div class="card bg-gradient-warning text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="fw-bold">{{ Attendance.query.filter_by(date_recorded=datetime.utcnow().date()).count() }}</h4>
+                            <p class="mb-0">Today's Classes</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-calendar-check fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-warning bg-opacity-25">
+                    <a href="{{ url_for('attendance') }}" class="text-white text-decoration-none">
+                        View Details <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if current_user.has_permission(Permission.VIEW_INVOICES) %}
+        <div class="col-md-3 mb-3">
+            <div class="card bg-gradient-info text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="fw-bold">{{ StudentInvoice.query.filter_by(status='Due').count() }}</h4>
+                            <p class="mb-0">Pending Invoices</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-file-invoice fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-info bg-opacity-25">
+                    <a href="{{ url_for('invoices') }}" class="text-white text-decoration-none">
+                        View Details <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-bolt me-2"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% if current_user.has_permission(Permission.ADD_STUDENTS) %}
+                        <div class="col-md-6 mb-3">
+                            <a href="{{ url_for('add_student') }}" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-plus me-2"></i>Add Student
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if current_user.has_permission(Permission.ADD_TUTORS) %}
+                        <div class="col-md-6 mb-3">
+                            <a href="{{ url_for('add_tutor') }}" class="btn btn-outline-success w-100">
+                                <i class="fas fa-plus me-2"></i>Add Tutor
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if current_user.has_permission(Permission.SUBMIT_ATTENDANCE) %}
+                        <div class="col-md-6 mb-3">
+                            <a href="{{ url_for('attendance') }}" class="btn btn-outline-warning w-100">
+                                <i class="fas fa-calendar-plus me-2"></i>Record Attendance
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if current_user.has_permission(Permission.VIEW_INVOICES) %}
+                        <div class="col-md-6 mb-3">
+                            <a href="{{ url_for('invoices') }}" class="btn btn-outline-info w-100">
+                                <i class="fas fa-file-invoice me-2"></i>View Invoices
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-2"></i>System Info
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Welcome:</strong> {{ current_user.full_name or current_user.username }}</p>
+                    <p><strong>Role:</strong> {{ current_user.roles[0].name if current_user.roles else 'User' }}</p>
+                    <p><strong>Last Login:</strong> {{ current_user.last_login.strftime('%d/%m/%Y %H:%M') if current_user.last_login else 'First time' }}</p>
+                    <p><strong>Status:</strong> <span class="badge bg-success">Active</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

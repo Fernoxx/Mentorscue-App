@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}{{ tutor.full_name }} - MENTORSCUE{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 text-primary">
+                    <i class="fas fa-chalkboard-teacher me-2"></i>{{ tutor.full_name }}
+                </h1>
+                <div>
+                    {% if current_user.has_permission(Permission.EDIT_TUTORS) %}
+                    <a href="{{ url_for('edit_tutor', id=tutor.id) }}" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-edit me-2"></i>Edit Tutor
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('tutors_list') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Tutors
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tutor Information Card -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Tutor Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Full Name:</strong> {{ tutor.full_name }}</p>
+                            <p><strong>Date of Birth:</strong> {{ tutor.date_of_birth.strftime('%d/%m/%Y') if tutor.date_of_birth else 'Not provided' }}</p>
+                            <p><strong>Mobile:</strong> 
+                                <a href="tel:{{ tutor.mobile }}" class="btn btn-sm btn-outline-success">
+                                    <i class="fas fa-phone me-1"></i>{{ tutor.mobile }}
+                                </a>
+                            </p>
+                            <p><strong>UPI ID:</strong> {{ tutor.upi_id or 'Not provided' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Username:</strong> 
+                                <code>{{ tutor.username }}</code>
+                                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="copyToClipboard('{{ tutor.username }}')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </p>
+                            <p><strong>Password:</strong> 
+                                <code id="tutorPassword">{{ tutor.password }}</code>
+                                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="copyToClipboard('{{ tutor.password }}')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </p>
+                            <p><strong>Status:</strong> 
+                                {% if tutor.status == 'Active' %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ tutor.status }}</span>
+                                {% endif %}
+                            </p>
+                            <p><strong>Billing Start:</strong> {{ tutor.billing_start_date.strftime('%d/%m/%Y') }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-users me-2"></i>Assigned Students
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if assigned_students %}
+                    {% for student in assigned_students %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <strong>{{ student.full_name }}</strong><br>
+                            <small class="text-muted">Class {{ student.class_level }}</small><br>
+                            <small class="text-success">₹{{ "%.2f"|format(student.get_tutor_pay_rate(tutor.id)) }} per class</small>
+                        </div>
+                        <a href="{{ url_for('student_profile', id=student.id) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    </div>
+                    {% if not loop.last %}<hr>{% endif %}
+                    {% endfor %}
+                    {% else %}
+                    <div class="text-center py-3">
+                        <i class="fas fa-user-times fa-2x text-muted mb-2"></i>
+                        <p class="text-muted mb-0">No students assigned</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tabs for Attendance and Receipts -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs" id="profileTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="attendance-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#attendance" type="button" role="tab">
+                                <i class="fas fa-calendar-check me-2"></i>Teaching History
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="receipts-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#receipts" type="button" role="tab">
+                                <i class="fas fa-file-invoice me-2"></i>Salary Receipts
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content" id="profileTabsContent">
+                        <!-- Attendance Tab -->
+                        <div class="tab-pane fade show active" id="attendance" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0">Classes Taught</h6>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary active" onclick="filterAttendance('all')">All</button>
+                                    <button class="btn btn-outline-primary" onclick="filterAttendance('week')">Last Week</button>
+                                    <button class="btn btn-outline-primary" onclick="filterAttendance('month')">Last Month</button>
+                                </div>
+                            </div>
+                            
+                            {% if attendance_records %}
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="attendanceTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Student</th>
+                                            <th>Subject</th>
+                                            <th>Duration</th>
+                                            <th>Rating</th>
+                                            <th>Pay Rate</th>
+                                            <th>Remarks</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for record in attendance_records %}
+                                        <tr data-date="{{ record.date_recorded }}">
+                                            <td>{{ record.date_recorded.strftime('%d/%m/%Y') }}</td>
+                                            <td>
+                                                <a href="{{ url_for('student_profile', id=record.student.id) }}" class="text-decoration-none">
+                                                    {{ record.student.full_name }}
+                                                </a>
+                                            </td>
+                                            <td>{{ record.subject }}</td>
+                                            <td>{{ record.duration_minutes }} mins</td>
+                                            <td>
+                                                <div class="rating-stars">
+                                                    {% for i in range(1, 11) %}
+                                                        {% if i <= record.rating %}
+                                                            <i class="fas fa-star text-warning"></i>
+                                                        {% else %}
+                                                            <i class="far fa-star text-muted"></i>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                    <small class="ms-1">({{ record.rating }}/10)</small>
+                                                </div>
+                                            </td>
+                                            <td class="text-success fw-bold">₹{{ "%.2f"|format(record.student.get_tutor_pay_rate(tutor.id)) }}</td>
+                                            <td>
+                                                {% if record.remarks %}
+                                                    <span title="{{ record.remarks }}">
+                                                        {{ record.remarks[:30] }}{% if record.remarks|length > 30 %}...{% endif %}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="text-muted">No remarks</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                                <h5 class="text-muted">No Classes Taught</h5>
+                                <p class="text-muted">Classes will appear here once attendance is recorded</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Receipts Tab -->
+                        <div class="tab-pane fade" id="receipts" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0">Salary Receipts</h6>
+                                {% if current_user.has_permission(Permission.GENERATE_INVOICES) %}
+                                <button class="btn btn-sm btn-success" onclick="generateCustomReceipt()">
+                                    <i class="fas fa-plus me-1"></i>Generate Receipt
+                                </button>
+                                {% endif %}
+                            </div>
+                            
+                            {% if receipts %}
+                            <div class="row">
+                                {% for receipt in receipts %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="card border-left-success">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <h6 class="card-title mb-0">{{ receipt.receipt_number }}</h6>
+                                                {% if receipt.status == 'Paid' %}
+                                                    <span class="badge bg-success">Paid</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning">Due</span>
+                                                {% endif %}
+                                            </div>
+                                            <p class="card-text">
+                                                <small class="text-muted">
+                                                    {{ receipt.start_date.strftime('%d/%m/%Y') }} - {{ receipt.end_date.strftime('%d/%m/%Y') }}
+                                                </small><br>
+                                                <strong class="text-success">₹{{ "%.2f"|format(receipt.total_earnings) }}</strong>
+                                                <small class="text-muted">({{ receipt.total_classes }} classes)</small>
+                                            </p>
+                                            <div class="btn-group btn-group-sm w-100">
+                                                {% if current_user.has_permission(Permission.DOWNLOAD_INVOICES) %}
+                                                <a href="{{ url_for('download_tutor_receipt', id=receipt.id) }}" 
+                                                   class="btn btn-outline-success">
+                                                    <i class="fas fa-download me-1"></i>Download
+                                                </a>
+                                                {% endif %}
+                                                {% if current_user.has_permission(Permission.MARK_PAYMENTS) and receipt.status != 'Paid' %}
+                                                <button class="btn btn-outline-primary" 
+                                                        onclick="markReceiptAsPaid({{ receipt.id }})">
+                                                    <i class="fas fa-check me-1"></i>Mark Paid
+                                                </button>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-file-invoice fa-3x text-muted mb-3"></i>
+                                <h5 class="text-muted">No Salary Receipts</h5>
+                                <p class="text-muted">Receipts will be generated automatically based on payment cycles</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function filterAttendance(period) {
+    const rows = document.querySelectorAll('#attendanceTable tbody tr');
+    const now = new Date();
+    const buttons = document.querySelectorAll('.btn-group .btn');
+    
+    // Update active button
+    buttons.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    rows.forEach(row => {
+        const dateStr = row.getAttribute('data-date');
+        const recordDate = new Date(dateStr);
+        let show = true;
+        
+        if (period === 'week') {
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            show = recordDate >= weekAgo;
+        } else if (period === 'month') {
+            const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            show = recordDate >= monthAgo;
+        }
+        
+        row.style.display = show ? '' : 'none';
+    });
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        // Show success feedback
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+        alertDiv.style.top = '20px';
+        alertDiv.style.right = '20px';
+        alertDiv.style.zIndex = '9999';
+        alertDiv.innerHTML = `
+            <i class="fas fa-check me-2"></i>Copied to clipboard!
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(alertDiv);
+        
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.parentNode.removeChild(alertDiv);
+            }
+        }, 3000);
+    });
+}
+
+function markReceiptAsPaid(receiptId) {
+    if (confirm('Mark this salary receipt as paid?')) {
+        // This would typically make an AJAX call to update the receipt status
+        alert('Receipt payment status update feature coming soon!');
+    }
+}
+
+function generateCustomReceipt() {
+    alert('Custom receipt generation feature coming soon!');
+}
+</script>
+{% endblock %}

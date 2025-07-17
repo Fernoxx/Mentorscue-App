@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Student - MENTORSCUE{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 text-primary">
+                    <i class="fas fa-user-edit me-2"></i>Edit Student
+                </h1>
+                <a href="{{ url_for('student_profile', id=student.id) }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Profile
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Student Information</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="studentForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="full_name" class="form-label">Student Full Name *</label>
+                                <input type="text" class="form-control" id="full_name" name="full_name" 
+                                       value="{{ student.full_name }}" required>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="parent_name" class="form-label">Parent/Guardian Name *</label>
+                                <input type="text" class="form-control" id="parent_name" name="parent_name" 
+                                       value="{{ student.parent_name }}" required>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="parent_whatsapp" class="form-label">Parent WhatsApp Number *</label>
+                                <input type="tel" class="form-control" id="parent_whatsapp" name="parent_whatsapp" 
+                                       value="{{ student.parent_whatsapp }}" required>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="class_level" class="form-label">Class Level *</label>
+                                <select class="form-select" id="class_level" name="class_level" required>
+                                    <option value="">Select Class</option>
+                                    {% for i in range(1, 13) %}
+                                    <option value="{{ i }}" {% if student.class_level == i|string %}selected{% endif %}>
+                                        Class {{ i }}
+                                    </option>
+                                    {% endfor %}
+                                    <option value="Other" {% if student.class_level == 'Other' %}selected{% endif %}>
+                                        Other
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="subjects" class="form-label">Subjects *</label>
+                                <input type="text" class="form-control" id="subjects" name="subjects" 
+                                       value="{{ student.subjects }}" required>
+                                <small class="form-text text-muted">Comma-separated subjects</small>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="per_class_fee" class="form-label">Per-Class Fee (₹) *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">₹</span>
+                                    <input type="number" class="form-control" id="per_class_fee" name="per_class_fee" 
+                                           value="{{ student.per_class_fee }}" min="0" step="0.01" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Assign Tutors</label>
+                            <div class="card border-light">
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <input type="text" class="form-control" id="tutorSearch" 
+                                               placeholder="Search tutors by name...">
+                                    </div>
+                                    
+                                    <div id="tutorList">
+                                        {% for tutor in tutors %}
+                                        <div class="tutor-item mb-2">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" 
+                                                       id="tutor_{{ tutor.id }}" name="tutor_ids" value="{{ tutor.id }}"
+                                                       {% if tutor.id in assigned_tutors %}checked{% endif %}>
+                                                <label class="form-check-label" for="tutor_{{ tutor.id }}">
+                                                    {{ tutor.full_name }} ({{ tutor.mobile }})
+                                                </label>
+                                            </div>
+                                            <div class="pay-rate-container" id="pay_container_{{ tutor.id }}" 
+                                                 style="display: {% if tutor.id in assigned_tutors %}block{% else %}none{% endif %};">
+                                                <div class="input-group mt-2">
+                                                    <span class="input-group-text">Pay per class: ₹</span>
+                                                    <input type="number" class="form-control" 
+                                                           name="pay_rate_{{ tutor.id }}" 
+                                                           value="{{ assigned_tutors.get(tutor.id, '') }}"
+                                                           min="0" step="0.01" placeholder="0.00"
+                                                           {% if tutor.id in assigned_tutors %}required{% endif %}>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('student_profile', id=student.id) }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Update Student
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Show/hide pay rate fields based on tutor selection
+document.querySelectorAll('input[name="tutor_ids"]').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const payContainer = document.getElementById('pay_container_' + this.value);
+        const payInput = payContainer.querySelector('input');
+        
+        if (this.checked) {
+            payContainer.style.display = 'block';
+            payInput.required = true;
+        } else {
+            payContainer.style.display = 'none';
+            payInput.required = false;
+            payInput.value = '';
+        }
+    });
+});
+
+// Tutor search functionality
+document.getElementById('tutorSearch').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    document.querySelectorAll('.tutor-item').forEach(item => {
+        const tutorName = item.querySelector('label').textContent.toLowerCase();
+        if (tutorName.includes(searchTerm)) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+});
+</script>
+{% endblock %}

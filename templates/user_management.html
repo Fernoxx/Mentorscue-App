@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+
+{% block title %}User Management - MENTORSCUE{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 text-primary">
+                    <i class="fas fa-users me-2"></i>User Management
+                </h1>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                    <i class="fas fa-plus me-2"></i>Add User
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list me-2"></i>All Users ({{ users|length }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if users %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Email</th>
+                                    <th>Mobile</th>
+                                    <th>Roles</th>
+                                    <th>Status</th>
+                                    <th>Last Login</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                                                {{ user.username[0].upper() }}
+                                            </div>
+                                            <div>
+                                                <strong>{{ user.full_name or user.username }}</strong><br>
+                                                <small class="text-muted">@{{ user.username }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ user.email or 'Not provided' }}</td>
+                                    <td>{{ user.mobile or 'Not provided' }}</td>
+                                    <td>
+                                        {% for role in user.roles %}
+                                        <span class="badge 
+                                            {% if role.name == 'Admin' %}bg-danger
+                                            {% elif role.name == 'Tutor' %}bg-success
+                                            {% elif role.name == 'Accountant' %}bg-info
+                                            {% elif role.name == 'Manager' %}bg-warning
+                                            {% else %}bg-secondary
+                                            {% endif %} me-1">
+                                            {{ role.name }}
+                                        </span>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {% if user.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if user.last_login %}
+                                            <small>{{ user.last_login.strftime('%d/%m/%Y %H:%M') }}</small>
+                                        {% else %}
+                                            <small class="text-muted">Never</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" 
+                                                    onclick="editUser({{ user.id }}, '{{ user.username }}', '{{ user.full_name or '' }}', '{{ user.email or '' }}', '{{ user.mobile or '' }}', {{ user.roles|map(attribute='id')|list }}, {{ user.is_active|lower }})"
+                                                    title="Edit User">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            {% if user.username != 'admin' %}
+                                            <button class="btn btn-outline-warning" 
+                                                    onclick="resetPassword({{ user.id }}, '{{ user.username }}')"
+                                                    title="Reset Password">
+                                                <i class="fas fa-key"></i>
+                                            </button>
+                                            <button class="btn btn-outline-{{ 'secondary' if user.is_active else 'success' }}" 
+                                                    onclick="toggleUserStatus({{ user.id }}, {{ user.is_active|lower }})"
+                                                    title="{{ 'Deactivate' if user.is_active else 'Activate' }}">
+                                                <i class="fas fa-{{ 'ban' if user.is_active else 'check' }}"></i>
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-users fa-4x text-muted mb-4"></i>
+                        <h4 class="text-muted">No Users Found</h4>
+                        <p class="text-muted">Start by adding your first user</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="/admin/users/add">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="add_username" class="form-label">Username *</label>
+                            <input type="text" class="form-control" id="add_username" name="username" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="add_full_name" class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="add_full_name" name="full_name">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="add_email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="add_email" name="email">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="add_mobile" class="form-label">Mobile</label>
+                            <input type="tel" class="form-control" id="add_mobile" name="mobile">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="add_password" class="form-label">Password *</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="add_password" name="password" required>
+                                <button type="button" class="btn btn-outline-secondary" onclick="generatePassword('add_password')">
+                                    <i class="fas fa-random"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="togglePassword('add_password')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="add_roles" class="form-label">Roles *</label>
+                            <select class="form-select" id="add_roles" name="role_ids" multiple required>
+                                {% for role in roles %}
+                                <option value="{{ role.id }}">{{ role.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple roles</small>
+                        </div>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="add_is_active" name="is_active" checked>
+                        <label class="form-check-label" for="add_is_active">
+                            Active User
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="editUserForm">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_username" class="form-label">Username *</label>
+                            <input type="text" class="form-control" id="edit_username" name="username" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_full_name" class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="edit_full_name" name="full_name">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="edit_email" name="email">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_mobile" class="form-label">Mobile</label>
+                            <input type="tel" class="form-control" id="edit_mobile" name="mobile">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_roles" class="form-label">Roles *</label>
+                        <select class="form-select" id="edit_roles" name="role_ids" multiple required>
+                            {% for role in roles %}
+                            <option value="{{ role.id }}">{{ role.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple roles</small>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="edit_is_active" name="is_active">
+                        <label class="form-check-label" for="edit_is_active">
+                            Active User
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reset Password</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="resetPasswordForm">
+                <div class="modal-body">
+                    <p>Reset password for user: <strong id="resetUsername"></strong></p>
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label">New Password *</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="new_password" name="new_password" required>
+                            <button type="button" class="btn btn-outline-secondary" onclick="generatePassword('new_password')">
+                                <i class="fas fa-random"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="togglePassword('new_password')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Reset Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editUser(id, username, fullName, email, mobile, roleIds, isActive) {
+    document.getElementById('edit_username').value = username;
+    document.getElementById('edit_full_name').value = fullName;
+    document.getElementById('edit_email').value = email;
+    document.getElementById('edit_mobile').value = mobile;
+    document.getElementById('edit_is_active').checked = isActive;
+    
+    // Set selected roles
+    const roleSelect = document.getElementById('edit_roles');
+    Array.from(roleSelect.options).forEach(option => {
+        option.selected = roleIds.includes(parseInt(option.value));
+    });
+    
+    document.getElementById('editUserForm').action = `/admin/users/${id}/edit`;
+    new bootstrap.Modal(document.getElementById('editUserModal')).show();
+}
+
+function resetPassword(id, username) {
+    document.getElementById('resetUsername').textContent = username;
+    document.getElementById('resetPasswordForm').action = `/admin/users/${id}/reset-password`;
+    new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
+}
+
+function toggleUserStatus(id, currentStatus) {
+    const action = currentStatus ? 'deactivate' : 'activate';
+    if (confirm(`Are you sure you want to ${action} this user?`)) {
+        // This would make an AJAX call to toggle user status
+        alert(`User ${action} feature coming soon!`);
+    }
+}
+
+function generatePassword(fieldId) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    let password = '';
+    for (let i = 0; i < 12; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    document.getElementById(fieldId).value = password;
+}
+
+function togglePassword(fieldId) {
+    const field = document.getElementById(fieldId);
+    const button = field.nextElementSibling.nextElementSibling;
+    const icon = button.querySelector('i');
+    
+    if (field.type === 'password') {
+        field.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        field.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+</script>
+
+<style>
+.avatar-sm {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+    font-weight: bold;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MENTORSCUE{% endblock %}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    {% if current_user.is_authenticated %}
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="{{ url_for('dashboard') }}">
+                <i class="fas fa-graduation-cap me-2"></i>MENTORSCUE
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    {% if current_user.is_tutor_user() %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('tutor_dashboard') }}">
+                                <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('attendance') }}">
+                                <i class="fas fa-calendar-check me-1"></i>Attendance
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dashboard') }}">
+                                <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                            </a>
+                        </li>
+                        
+                        {% if current_user.has_permission(Permission.VIEW_STUDENTS) %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('students_list') }}">
+                                <i class="fas fa-user-graduate me-1"></i>Students
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% if current_user.has_permission(Permission.VIEW_TUTORS) %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('tutors_list') }}">
+                                <i class="fas fa-chalkboard-teacher me-1"></i>Tutors
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% if current_user.has_permission(Permission.VIEW_ATTENDANCE) %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('attendance') }}">
+                                <i class="fas fa-calendar-check me-1"></i>Attendance
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% if current_user.has_permission(Permission.VIEW_INVOICES) %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('invoices') }}">
+                                <i class="fas fa-file-invoice me-1"></i>Invoices
+                            </a>
+                        </li>
+                        {% endif %}
+                    {% endif %}
+                </ul>
+                
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fas fa-user me-1"></i>{{ current_user.full_name or current_user.username }}
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Profile</a></li>
+                            {% if current_user.has_permission(Permission.MANAGE_USERS) %}
+                            <li><a class="dropdown-item" href="{{ url_for('user_management') }}"><i class="fas fa-users me-2"></i>Users</a></li>
+                            {% endif %}
+                            {% if current_user.has_permission(Permission.MANAGE_ROLES) %}
+                            <li><a class="dropdown-item" href="{{ url_for('roles_permissions') }}"><i class="fas fa-cog me-2"></i>Roles</a></li>
+                            {% endif %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+    
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container mt-3">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    
+    <!-- Main Content -->
+    <main class="py-4">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

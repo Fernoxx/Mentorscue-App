@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}Roles & Permissions - MENTORSCUE{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 text-primary">
+                    <i class="fas fa-cog me-2"></i>Roles & Permissions
+                </h1>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRoleModal">
+                    <i class="fas fa-plus me-2"></i>Create Role
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list me-2"></i>System Roles ({{ roles|length }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if roles %}
+                    <div class="row">
+                        {% for role in roles %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100 {% if not role.is_custom %}border-primary{% endif %}">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h6 class="card-title mb-0">
+                                        {% if not role.is_custom %}
+                                            <i class="fas fa-shield-alt text-primary me-2"></i>
+                                        {% else %}
+                                            <i class="fas fa-user-tag text-secondary me-2"></i>
+                                        {% endif %}
+                                        {{ role.name }}
+                                    </h6>
+                                    {% if role.is_custom %}
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" onclick="editRole({{ role.id }}, '{{ role.name }}', '{{ role.description }}', {{ role.permissions }})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" onclick="deleteRole({{ role.id }}, '{{ role.name }}')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text text-muted mb-3">{{ role.description }}</p>
+                                    
+                                    <h6 class="text-primary mb-2">Permissions:</h6>
+                                    <div class="permissions-list">
+                                        {% set permission_names = {
+                                            1: 'View Students',
+                                            2: 'Add Students', 
+                                            4: 'Edit Students',
+                                            8: 'Delete Students',
+                                            16: 'View Tutors',
+                                            32: 'Add Tutors',
+                                            64: 'Edit Tutors',
+                                            128: 'Delete Tutors',
+                                            256: 'View Attendance',
+                                            512: 'Submit Attendance',
+                                            1024: 'View Invoices',
+                                            2048: 'Generate Invoices',
+                                            4096: 'Mark Payments',
+                                            8192: 'Download Invoices',
+                                            16384: 'Access Settings',
+                                            32768: 'Manage Users',
+                                            65536: 'Manage Roles'
+                                        } %}
+                                        
+                                        {% for perm_value, perm_name in permission_names.items() %}
+                                            {% if role.has_permission(perm_value) %}
+                                                <span class="badge bg-success me-1 mb-1">{{ perm_name }}</span>
+                                            {% endif %}
+                                        {% endfor %}
+                                        
+                                        {% if role.permissions == 0 %}
+                                            <span class="text-muted">No permissions assigned</span>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <hr>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="text-muted">
+                                            <i class="fas fa-users me-1"></i>{{ role.users|length }} users
+                                        </small>
+                                        {% if role.is_default %}
+                                            <span class="badge bg-info">Default</span>
+                                        {% endif %}
+                                        {% if not role.is_custom %}
+                                            <span class="badge bg-primary">System</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Custom</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-user-tag fa-4x text-muted mb-4"></i>
+                        <h4 class="text-muted">No Roles Found</h4>
+                        <p class="text-muted">Start by creating your first role</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Role Modal -->
+<div class="modal fade" id="addRoleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Role</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="/admin/roles/add">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="add_role_name" class="form-label">Role Name *</label>
+                        <input type="text" class="form-control" id="add_role_name" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="add_role_description" class="form-label">Description</label>
+                        <textarea class="form-control" id="add_role_description" name="description" rows="2"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Permissions</label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="text-primary">Student Management</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="1" id="add_perm_1">
+                                    <label class="form-check-label" for="add_perm_1">View Students</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="2" id="add_perm_2">
+                                    <label class="form-check-label" for="add_perm_2">Add Students</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="4" id="add_perm_4">
+                                    <label class="form-check-label" for="add_perm_4">Edit Students</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="8" id="add_perm_8">
+                                    <label class="form-check-label" for="add_perm_8">Delete Students</label>
+                                </div>
+                                
+                                <h6 class="text-primary mt-3">Tutor Management</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="16" id="add_perm_16">
+                                    <label class="form-check-label" for="add_perm_16">View Tutors</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="32" id="add_perm_32">
+                                    <label class="form-check-label" for="add_perm_32">Add Tutors</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="64" id="add_perm_64">
+                                    <label class="form-check-label" for="add_perm_64">Edit Tutors</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="128" id="add_perm_128">
+                                    <label class="form-check-label" for="add_perm_128">Delete Tutors</label>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h6 class="text-primary">Attendance & Invoices</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="256" id="add_perm_256">
+                                    <label class="form-check-label" for="add_perm_256">View Attendance</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="512" id="add_perm_512">
+                                    <label class="form-check-label" for="add_perm_512">Submit Attendance</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="1024" id="add_perm_1024">
+                                    <label class="form-check-label" for="add_perm_1024">View Invoices</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="2048" id="add_perm_2048">
+                                    <label class="form-check-label" for="add_perm_2048">Generate Invoices</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="4096" id="add_perm_4096">
+                                    <label class="form-check-label" for="add_perm_4096">Mark Payments</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="8192" id="add_perm_8192">
+                                    <label class="form-check-label" for="add_perm_8192">Download Invoices</label>
+                                </div>
+                                
+                                <h6 class="text-primary mt-3">System Administration</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="16384" id="add_perm_16384">
+                                    <label class="form-check-label" for="add_perm_16384">Access Settings</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="32768" id="add_perm_32768">
+                                    <label class="form-check-label" for="add_perm_32768">Manage Users</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="65536" id="add_perm_65536">
+                                    <label class="form-check-label" for="add_perm_65536">Manage Roles</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="add_is_default" name="is_default">
+                        <label class="form-check-label" for="add_is_default">
+                            Make this the default role for new users
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Role</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Role Modal -->
+<div class="modal fade" id="editRoleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Role</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="editRoleForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_role_name" class="form-label">Role Name *</label>
+                        <input type="text" class="form-control" id="edit_role_name" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_role_description" class="form-label">Description</label>
+                        <textarea class="form-control" id="edit_role_description" name="description" rows="2"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Permissions</label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="text-primary">Student Management</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="1" id="edit_perm_1">
+                                    <label class="form-check-label" for="edit_perm_1">View Students</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="2" id="edit_perm_2">
+                                    <label class="form-check-label" for="edit_perm_2">Add Students</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="4" id="edit_perm_4">
+                                    <label class="form-check-label" for="edit_perm_4">Edit Students</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="8" id="edit_perm_8">
+                                    <label class="form-check-label" for="edit_perm_8">Delete Students</label>
+                                </div>
+                                
+                                <h6 class="text-primary mt-3">Tutor Management</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="16" id="edit_perm_16">
+                                    <label class="form-check-label" for="edit_perm_16">View Tutors</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="32" id="edit_perm_32">
+                                    <label class="form-check-label" for="edit_perm_32">Add Tutors</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="64" id="edit_perm_64">
+                                    <label class="form-check-label" for="edit_perm_64">Edit Tutors</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="128" id="edit_perm_128">
+                                    <label class="form-check-label" for="edit_perm_128">Delete Tutors</label>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h6 class="text-primary">Attendance & Invoices</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="256" id="edit_perm_256">
+                                    <label class="form-check-label" for="edit_perm_256">View Attendance</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="512" id="edit_perm_512">
+                                    <label class="form-check-label" for="edit_perm_512">Submit Attendance</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="1024" id="edit_perm_1024">
+                                    <label class="form-check-label" for="edit_perm_1024">View Invoices</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="2048" id="edit_perm_2048">
+                                    <label class="form-check-label" for="edit_perm_2048">Generate Invoices</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="4096" id="edit_perm_4096">
+                                    <label class="form-check-label" for="edit_perm_4096">Mark Payments</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="8192" id="edit_perm_8192">
+                                    <label class="form-check-label" for="edit_perm_8192">Download Invoices</label>
+                                </div>
+                                
+                                <h6 class="text-primary mt-3">System Administration</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="16384" id="edit_perm_16384">
+                                    <label class="form-check-label" for="edit_perm_16384">Access Settings</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="32768" id="edit_perm_32768">
+                                    <label class="form-check-label" for="edit_perm_32768">Manage Users</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="65536" id="edit_perm_65536">
+                                    <label class="form-check-label" for="edit_perm_65536">Manage Roles</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Role</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editRole(id, name, description, permissions) {
+    document.getElementById('edit_role_name').value = name;
+    document.getElementById('edit_role_description').value = description;
+    
+    // Clear all checkboxes first
+    document.querySelectorAll('#editRoleModal input[type="checkbox"]').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    
+    // Check permissions that are set
+    [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536].forEach(permValue => {
+        if (permissions & permValue) {
+            const checkbox = document.getElementById(`edit_perm_${permValue}`);
+            if (checkbox) checkbox.checked = true;
+        }
+    });
+    
+    document.getElementById('editRoleForm').action = `/admin/roles/${id}/edit`;
+    new bootstrap.Modal(document.getElementById('editRoleModal')).show();
+}
+
+function deleteRole(id, name) {
+    if (confirm(`Are you sure you want to delete the role "${name}"? This action cannot be undone.`)) {
+        // This would make a DELETE request
+        alert('Role deletion feature coming soon!');
+    }
+}
+</script>
+{% endblock %}

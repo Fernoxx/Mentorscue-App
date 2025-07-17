@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Students - MENTORSCUE{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 text-primary">
+                    <i class="fas fa-user-graduate me-2"></i>Students
+                </h1>
+                {% if current_user.has_permission(Permission.ADD_STUDENTS) %}
+                <a href="{{ url_for('add_student') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Add Student
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list me-2"></i>All Students ({{ students|length }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if students %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Class</th>
+                                    <th>Subjects</th>
+                                    <th>Parent</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for student in students %}
+                                <tr onclick="window.location='{{ url_for('student_profile', id=student.id) }}'" style="cursor: pointer;">
+                                    <td>
+                                        <strong>{{ student.full_name }}</strong><br>
+                                        <small class="text-muted">ID: {{ student.id }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">Class {{ student.class_level }}</span>
+                                    </td>
+                                    <td>
+                                        <small>{{ student.subjects[:50] }}{% if student.subjects|length > 50 %}...{% endif %}</small>
+                                    </td>
+                                    <td>
+                                        {{ student.parent_name }}<br>
+                                        <small class="text-muted">{{ student.parent_whatsapp }}</small>
+                                    </td>
+                                    <td>
+                                        {% if student.status == 'Active' %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% elif student.status == 'Inactive' %}
+                                            <span class="badge bg-secondary">Inactive</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">{{ student.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td onclick="event.stopPropagation();">
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('student_profile', id=student.id) }}" 
+                                               class="btn btn-outline-primary" title="View Profile">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {% if current_user.has_permission(Permission.EDIT_STUDENTS) %}
+                                            <a href="{{ url_for('edit_student', id=student.id) }}" 
+                                               class="btn btn-outline-secondary" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            {% endif %}
+                                            <a href="https://wa.me/{{ student.parent_whatsapp.replace('+', '').replace(' ', '') }}" 
+                                               target="_blank" class="btn btn-outline-success" title="WhatsApp">
+                                                <i class="fab fa-whatsapp"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-user-graduate fa-4x text-muted mb-4"></i>
+                        <h4 class="text-muted">No Students Found</h4>
+                        <p class="text-muted">Get started by adding your first student</p>
+                        {% if current_user.has_permission(Permission.ADD_STUDENTS) %}
+                        <a href="{{ url_for('add_student') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Add First Student
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

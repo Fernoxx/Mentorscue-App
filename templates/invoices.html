@@ -1,0 +1,476 @@
+{% extends "base.html" %}
+
+{% block title %}Invoices - MENTORSCUE{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 text-primary">
+                    <i class="fas fa-file-invoice me-2"></i>Invoices & Receipts
+                </h1>
+                <div class="btn-group">
+                    <button class="btn btn-outline-primary active" onclick="showTab('student')">Student Invoices</button>
+                    <button class="btn btn-outline-primary" onclick="showTab('tutor')">Tutor Receipts</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filter Controls -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row align-items-end">
+                        <div class="col-md-3">
+                            <label for="statusFilter" class="form-label">Status</label>
+                            <select class="form-select" id="statusFilter" onchange="filterInvoices()">
+                                <option value="">All Status</option>
+                                <option value="Due">Due</option>
+                                <option value="Partial">Partial</option>
+                                <option value="Paid">Paid</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="dateFrom" class="form-label">From Date</label>
+                            <input type="date" class="form-control" id="dateFrom" onchange="filterInvoices()">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="dateTo" class="form-label">To Date</label>
+                            <input type="date" class="form-control" id="dateTo" onchange="filterInvoices()">
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                                <i class="fas fa-times me-2"></i>Clear Filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Student Invoices Tab -->
+    <div id="studentTab">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-graduation-cap me-2"></i>Student Invoices ({{ student_invoices|length }})
+                            </h5>
+                            {% if current_user.has_permission(Permission.GENERATE_INVOICES) %}
+                            <button class="btn btn-primary btn-sm" onclick="generateBulkInvoices()">
+                                <i class="fas fa-plus me-2"></i>Generate Invoices
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% if student_invoices %}
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="studentInvoicesTable">
+                                <thead>
+                                    <tr>
+                                        <th>Invoice #</th>
+                                        <th>Student</th>
+                                        <th>Period</th>
+                                        <th>Classes</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th>Generated</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for invoice in student_invoices %}
+                                    <tr data-status="{{ invoice.status }}" data-date="{{ invoice.generated_at.strftime('%Y-%m-%d') }}">
+                                        <td>
+                                            <strong>{{ invoice.invoice_number }}</strong>
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('student_profile', id=invoice.student.id) }}" class="text-decoration-none">
+                                                {{ invoice.student.full_name }}
+                                            </a><br>
+                                            <small class="text-muted">Class {{ invoice.student.class_level }}</small>
+                                        </td>
+                                        <td>
+                                            <small>{{ invoice.start_date.strftime('%d/%m/%Y') }} - {{ invoice.end_date.strftime('%d/%m/%Y') }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ invoice.total_classes }}</span>
+                                        </td>
+                                        <td>
+                                            <strong class="text-success">₹{{ "%.2f"|format(invoice.total_amount) }}</strong>
+                                            {% if invoice.amount_paid > 0 and invoice.status != 'Paid' %}
+                                            <br><small class="text-muted">Paid: ₹{{ "%.2f"|format(invoice.amount_paid) }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if invoice.status == 'Paid' %}
+                                                <span class="badge bg-success">Paid</span>
+                                            {% elif invoice.status == 'Partial' %}
+                                                <span class="badge bg-warning">Partial</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Due</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small>{{ invoice.generated_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                {% if current_user.has_permission(Permission.DOWNLOAD_INVOICES) %}
+                                                <a href="{{ url_for('download_student_invoice', id=invoice.id) }}" 
+                                                   class="btn btn-outline-primary" title="Download PDF">
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                                {% endif %}
+                                                
+                                                {% if current_user.has_permission(Permission.MARK_PAYMENTS) and invoice.status != 'Paid' %}
+                                                <button class="btn btn-outline-success" title="Mark as Paid"
+                                                        onclick="markInvoicePaid({{ invoice.id }}, {{ invoice.total_amount }}, '{{ invoice.invoice_number }}')">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                {% endif %}
+                                                
+                                                <a href="https://wa.me/{{ invoice.student.parent_whatsapp.replace('+', '').replace(' ', '') }}?text=Dear%20{{ invoice.student.parent_name }},%20your%20invoice%20{{ invoice.invoice_number }}%20for%20{{ invoice.student.full_name }}%20is%20ready.%20Amount:%20₹{{ invoice.total_amount }}" 
+                                                   target="_blank" class="btn btn-outline-success" title="Send WhatsApp">
+                                                    <i class="fab fa-whatsapp"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Summary Cards -->
+                        <div class="row mt-4">
+                            <div class="col-md-3">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h5 class="text-success">₹{{ "%.2f"|format(student_invoices|selectattr('status', 'equalto', 'Paid')|sum(attribute='total_amount')) }}</h5>
+                                        <small class="text-muted">Total Paid</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h5 class="text-warning">₹{{ "%.2f"|format(student_invoices|selectattr('status', 'equalto', 'Partial')|sum(attribute='amount_paid')) }}</h5>
+                                        <small class="text-muted">Partial Payments</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h5 class="text-danger">₹{{ "%.2f"|format(student_invoices|selectattr('status', 'equalto', 'Due')|sum(attribute='total_amount')) }}</h5>
+                                        <small class="text-muted">Outstanding</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h5 class="text-primary">₹{{ "%.2f"|format(student_invoices|sum(attribute='total_amount')) }}</h5>
+                                        <small class="text-muted">Total Revenue</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-file-invoice fa-4x text-muted mb-4"></i>
+                            <h4 class="text-muted">No Student Invoices</h4>
+                            <p class="text-muted">Invoices will be generated automatically based on billing cycles</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tutor Receipts Tab -->
+    <div id="tutorTab" style="display: none;">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-chalkboard-teacher me-2"></i>Tutor Salary Receipts ({{ tutor_receipts|length }})
+                            </h5>
+                            {% if current_user.has_permission(Permission.GENERATE_INVOICES) %}
+                            <button class="btn btn-success btn-sm" onclick="generateBulkReceipts()">
+                                <i class="fas fa-plus me-2"></i>Generate Receipts
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% if tutor_receipts %}
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="tutorReceiptsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Receipt #</th>
+                                        <th>Tutor</th>
+                                        <th>Period</th>
+                                        <th>Classes</th>
+                                        <th>Earnings</th>
+                                        <th>Status</th>
+                                        <th>Generated</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for receipt in tutor_receipts %}
+                                    <tr data-status="{{ receipt.status }}" data-date="{{ receipt.generated_at.strftime('%Y-%m-%d') }}">
+                                        <td>
+                                            <strong>{{ receipt.receipt_number }}</strong>
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('tutor_profile', id=receipt.tutor.id) }}" class="text-decoration-none">
+                                                {{ receipt.tutor.full_name }}
+                                            </a><br>
+                                            <small class="text-muted">{{ receipt.tutor.mobile }}</small>
+                                        </td>
+                                        <td>
+                                            <small>{{ receipt.start_date.strftime('%d/%m/%Y') }} - {{ receipt.end_date.strftime('%d/%m/%Y') }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ receipt.total_classes }}</span>
+                                        </td>
+                                        <td>
+                                            <strong class="text-success">₹{{ "%.2f"|format(receipt.total_earnings) }}</strong>
+                                        </td>
+                                        <td>
+                                            {% if receipt.status == 'Paid' %}
+                                                <span class="badge bg-success">Paid</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">Due</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small>{{ receipt.generated_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                {% if current_user.has_permission(Permission.DOWNLOAD_INVOICES) %}
+                                                <a href="{{ url_for('download_tutor_receipt', id=receipt.id) }}" 
+                                                   class="btn btn-outline-success" title="Download PDF">
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                                {% endif %}
+                                                
+                                                {% if current_user.has_permission(Permission.MARK_PAYMENTS) and receipt.status != 'Paid' %}
+                                                <button class="btn btn-outline-primary" title="Mark as Paid"
+                                                        onclick="markReceiptPaid({{ receipt.id }}, '{{ receipt.receipt_number }}')">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                {% endif %}
+                                                
+                                                <a href="tel:{{ receipt.tutor.mobile }}" 
+                                                   class="btn btn-outline-primary" title="Call Tutor">
+                                                    <i class="fas fa-phone"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Summary Cards -->
+                        <div class="row mt-4">
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h5 class="text-success">₹{{ "%.2f"|format(tutor_receipts|selectattr('status', 'equalto', 'Paid')|sum(attribute='total_earnings')) }}</h5>
+                                        <small class="text-muted">Total Paid</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h5 class="text-warning">₹{{ "%.2f"|format(tutor_receipts|selectattr('status', 'equalto', 'Due')|sum(attribute='total_earnings')) }}</h5>
+                                        <small class="text-muted">Outstanding</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h5 class="text-primary">₹{{ "%.2f"|format(tutor_receipts|sum(attribute='total_earnings')) }}</h5>
+                                        <small class="text-muted">Total Expenses</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-file-invoice fa-4x text-muted mb-4"></i>
+                            <h4 class="text-muted">No Tutor Receipts</h4>
+                            <p class="text-muted">Receipts will be generated automatically based on payment cycles</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mark Invoice as Paid Modal -->
+<div class="modal fade" id="markInvoicePaidModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Mark Invoice as Paid</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="markInvoicePaidForm">
+                <div class="modal-body">
+                    <p>Invoice: <strong id="invoiceNumber"></strong></p>
+                    <div class="mb-3">
+                        <label for="invoice_amount_paid" class="form-label">Amount Paid (₹)</label>
+                        <input type="number" class="form-control" id="invoice_amount_paid" name="amount_paid" 
+                               min="0" step="0.01" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Mark as Paid</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Mark Receipt as Paid Modal -->
+<div class="modal fade" id="markReceiptPaidModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Mark Receipt as Paid</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Receipt: <strong id="receiptNumber"></strong></p>
+                <p>Are you sure you want to mark this salary receipt as paid?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="confirmReceiptPaid">Mark as Paid</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showTab(tab) {
+    const studentTab = document.getElementById('studentTab');
+    const tutorTab = document.getElementById('tutorTab');
+    const buttons = document.querySelectorAll('.btn-group .btn');
+    
+    // Update active button
+    buttons.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    if (tab === 'student') {
+        studentTab.style.display = 'block';
+        tutorTab.style.display = 'none';
+    } else {
+        studentTab.style.display = 'none';
+        tutorTab.style.display = 'block';
+    }
+}
+
+function filterInvoices() {
+    const statusFilter = document.getElementById('statusFilter').value;
+    const dateFrom = document.getElementById('dateFrom').value;
+    const dateTo = document.getElementById('dateTo').value;
+    
+    // Filter student invoices
+    const studentRows = document.querySelectorAll('#studentInvoicesTable tbody tr');
+    studentRows.forEach(row => {
+        let show = true;
+        
+        if (statusFilter && row.getAttribute('data-status') !== statusFilter) {
+            show = false;
+        }
+        
+        if (dateFrom || dateTo) {
+            const rowDate = row.getAttribute('data-date');
+            if (dateFrom && rowDate < dateFrom) show = false;
+            if (dateTo && rowDate > dateTo) show = false;
+        }
+        
+        row.style.display = show ? '' : 'none';
+    });
+    
+    // Filter tutor receipts
+    const tutorRows = document.querySelectorAll('#tutorReceiptsTable tbody tr');
+    tutorRows.forEach(row => {
+        let show = true;
+        
+        if (statusFilter && row.getAttribute('data-status') !== statusFilter) {
+            show = false;
+        }
+        
+        if (dateFrom || dateTo) {
+            const rowDate = row.getAttribute('data-date');
+            if (dateFrom && rowDate < dateFrom) show = false;
+            if (dateTo && rowDate > dateTo) show = false;
+        }
+        
+        row.style.display = show ? '' : 'none';
+    });
+}
+
+function clearFilters() {
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('dateFrom').value = '';
+    document.getElementById('dateTo').value = '';
+    filterInvoices();
+}
+
+function markInvoicePaid(invoiceId, totalAmount, invoiceNumber) {
+    document.getElementById('invoiceNumber').textContent = invoiceNumber;
+    document.getElementById('invoice_amount_paid').value = totalAmount;
+    document.getElementById('markInvoicePaidForm').action = `/invoices/student/${invoiceId}/mark-paid`;
+    new bootstrap.Modal(document.getElementById('markInvoicePaidModal')).show();
+}
+
+function markReceiptPaid(receiptId, receiptNumber) {
+    document.getElementById('receiptNumber').textContent = receiptNumber;
+    document.getElementById('confirmReceiptPaid').onclick = function() {
+        // This would make an AJAX call to mark the receipt as paid
+        alert('Receipt payment status update feature coming soon!');
+        bootstrap.Modal.getInstance(document.getElementById('markReceiptPaidModal')).hide();
+    };
+    new bootstrap.Modal(document.getElementById('markReceiptPaidModal')).show();
+}
+
+function generateBulkInvoices() {
+    if (confirm('Generate invoices for all students with due billing cycles?')) {
+        alert('Bulk invoice generation feature coming soon!');
+    }
+}
+
+function generateBulkReceipts() {
+    if (confirm('Generate salary receipts for all tutors with due payment cycles?')) {
+        alert('Bulk receipt generation feature coming soon!');
+    }
+}
+</script>
+{% endblock %}

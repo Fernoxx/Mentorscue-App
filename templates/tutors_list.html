@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Tutors - MENTORSCUE{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 text-primary">
+                    <i class="fas fa-chalkboard-teacher me-2"></i>Tutors
+                </h1>
+                {% if current_user.has_permission(Permission.ADD_TUTORS) %}
+                <a href="{{ url_for('add_tutor') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Add Tutor
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list me-2"></i>All Tutors ({{ tutors|length }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if tutors %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Mobile</th>
+                                    <th>Students Assigned</th>
+                                    <th>Status</th>
+                                    <th>Payment Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for tutor in tutors %}
+                                <tr onclick="window.location='{{ url_for('tutor_profile', id=tutor.id) }}'" style="cursor: pointer;">
+                                    <td>
+                                        <strong>{{ tutor.full_name }}</strong><br>
+                                        <small class="text-muted">{{ tutor.username }}</small>
+                                    </td>
+                                    <td>{{ tutor.mobile }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ tutor.students|length }} Students</span>
+                                    </td>
+                                    <td>
+                                        {% if tutor.status == 'Active' %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% set pending_receipts = tutor.receipts.filter_by(status='Due').count() %}
+                                        {% if pending_receipts > 0 %}
+                                            <span class="badge bg-warning">{{ pending_receipts }} Due</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Up to Date</span>
+                                        {% endif %}
+                                    </td>
+                                    <td onclick="event.stopPropagation();">
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('tutor_profile', id=tutor.id) }}" 
+                                               class="btn btn-outline-primary" title="View Profile">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {% if current_user.has_permission(Permission.EDIT_TUTORS) %}
+                                            <a href="{{ url_for('edit_tutor', id=tutor.id) }}" 
+                                               class="btn btn-outline-secondary" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            {% endif %}
+                                            <a href="tel:{{ tutor.mobile }}" 
+                                               class="btn btn-outline-success" title="Call">
+                                                <i class="fas fa-phone"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-chalkboard-teacher fa-4x text-muted mb-4"></i>
+                        <h4 class="text-muted">No Tutors Found</h4>
+                        <p class="text-muted">Get started by adding your first tutor</p>
+                        {% if current_user.has_permission(Permission.ADD_TUTORS) %}
+                        <a href="{{ url_for('add_tutor') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Add First Tutor
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
