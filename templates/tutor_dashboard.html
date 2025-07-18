@@ -178,5 +178,82 @@
             </div>
         </div>
     </div>
+    
+    <!-- Announcements -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-bullhorn me-2"></i>Announcements
+                    </h5>
+                </div>
+                <div class="card-body" id="announcements-container">
+                    <div class="text-center py-3">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="text-muted mt-2">Loading announcements...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadAnnouncements();
+    
+    function loadAnnouncements() {
+        fetch('/api/announcements/active')
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('announcements-container');
+                
+                if (data.announcements && data.announcements.length > 0) {
+                    let html = '';
+                    data.announcements.forEach(announcement => {
+                        const createdDate = new Date(announcement.created_at).toLocaleDateString();
+                        const expiryDate = announcement.expiry_date ? new Date(announcement.expiry_date).toLocaleDateString() : null;
+                        
+                        html += `
+                            <div class="announcement fade-in">
+                                <div class="announcement-title">${announcement.title}</div>
+                                <div class="announcement-content">${announcement.content}</div>
+                                <div class="announcement-meta">
+                                    <small>
+                                        <i class="fas fa-calendar me-1"></i>Posted: ${createdDate}
+                                        ${expiryDate ? `<i class="fas fa-clock ms-3 me-1"></i>Expires: ${expiryDate}` : ''}
+                                    </small>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center py-3">
+                            <i class="fas fa-info-circle text-muted fa-2x mb-2"></i>
+                            <p class="text-muted">No announcements at this time.</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading announcements:', error);
+                const container = document.getElementById('announcements-container');
+                container.innerHTML = `
+                    <div class="text-center py-3">
+                        <i class="fas fa-exclamation-triangle text-warning fa-2x mb-2"></i>
+                        <p class="text-muted">Unable to load announcements.</p>
+                    </div>
+                `;
+            });
+    }
+    
+    // Auto-refresh announcements every 5 minutes
+    setInterval(loadAnnouncements, 300000);
+});
+</script>
 {% endblock %}

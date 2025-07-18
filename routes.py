@@ -2,10 +2,13 @@ from flask import render_template, request, redirect, url_for, flash, jsonify, m
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 import json
+import os
+import zipfile
+import tempfile
 
 from app import app, db
 from models import (User, Role, Student, Tutor, Attendance, StudentInvoice, 
-                   TutorReceipt, Permission, student_tutors)
+                   TutorReceipt, Permission, student_tutors, Announcement, Settings)
 from utils import permission_required, admin_required
 from pdf_generator import generate_student_invoice_pdf, generate_tutor_receipt_pdf
 from auth import auth
@@ -18,7 +21,8 @@ app.register_blueprint(auth)
 def inject_permissions():
     return dict(Permission=Permission, User=User, Role=Role, Student=Student, Tutor=Tutor, 
                 Attendance=Attendance, StudentInvoice=StudentInvoice, 
-                TutorReceipt=TutorReceipt, datetime=datetime, db=db)
+                TutorReceipt=TutorReceipt, Announcement=Announcement, Settings=Settings,
+                datetime=datetime, db=db, timedelta=timedelta)
 
 # Main routes
 @app.route('/')
@@ -667,3 +671,420 @@ def not_found(error):
 def internal_error(error):
     db.session.rollback()
     return render_template('500.html'), 500
+
+# Settings routes
+@app.route('/settings')
+@login_required
+@permission_required(Permission.ACCESS_SETTINGS)
+def settings():
+    theme_settings = Settings.get_theme_settings()
+    dues_colors = Settings.query.filter_by(category='dues_colors').all()
+    general_settings = Settings.query.filter_by(category='general').all()
+    
+    return render_template('settings.html', 
+                         theme_settings=theme_settings,
+                         dues_colors=dues_colors,
+                         general_settings=general_settings)
+
+@app.route('/settings/update', methods=['POST'])
+@login_required
+@permission_required(Permission.ACCESS_SETTINGS)
+def update_settings():
+    try:
+        # Update theme settings
+        theme_keys = ['primary_color', 'secondary_color', 'background_color', 'text_color', 'title_font', 'body_font']
+        for key in theme_keys:
+            if key in request.form:
+                Settings.set_setting(f'theme_{key}', request.form[key], 'theme')
+        
+        # Update dues colors
+        dues_keys = ['just_joined', 'first_5_days', 'next_5_days', 'after_10_days', 'partial_payment', 'paid_attended', 'paid_no_class']
+        for key in dues_keys:
+            if key in request.form:
+                Settings.set_setting(f'dues_colors_{key}', request.form[key], 'dues_colors')
+        
+        # Update general settings
+        if 'invoice_prefix' in request.form:
+            Settings.set_setting('general_invoice_prefix', request.form['invoice_prefix'], 'general')
+        if 'receipt_prefix' in request.form:
+            Settings.set_setting('general_receipt_prefix', request.form['receipt_prefix'], 'general')
+        
+        flash('Settings updated successfully', 'success')
+    except Exception as e:
+        flash(f'Error updating settings: {str(e)}', 'error')
+    
+    return redirect(url_for('settings'))
+
+@app.route('/settings/reset', methods=['POST'])
+@login_required
+@permission_required(Permission.ACCESS_SETTINGS)
+def reset_settings():
+    try:
+        # Delete all settings and recreate defaults
+        Settings.query.delete()
+        db.session.commit()
+        
+        from models import create_default_settings
+        create_default_settings()
+        
+        flash('Settings reset to default values', 'success')
+    except Exception as e:
+        flash(f'Error resetting settings: {str(e)}', 'error')
+    
+    return redirect(url_for('settings'))
+
+# Dues routes
+@app.route('/dues')
+@login_required
+@permission_required(Permission.VIEW_STUDENTS)
+def dues():
+    return render_template('dues.html')
+
+@app.route('/dues/students')
+@login_required
+@permission_required(Permission.VIEW_STUDENTS)
+def dues_students():
+    students = Student.query.filter_by(status='Active').all()
+    student_dues = []
+    
+    for student in students:
+        # Calculate dues status
+        latest_invoice = StudentInvoice.query.filter_by(student_id=student.id).order_by(StudentInvoice.generated_at.desc()).first()
+        
+        if not latest_invoice:
+            status = 'just_joined'
+        elif latest_invoice.status == 'Paid':
+            # Check if attended after payment
+            last_attendance = Attendance.query.filter_by(student_id=student.id).order_by(Attendance.date_recorded.desc()).first()
+            if last_attendance and last_attendance.date_recorded > latest_invoice.generated_at.date():
+                status = 'paid_attended'
+            else:
+                status = 'paid_no_class'
+        elif latest_invoice.status == 'Partial':
+            status = 'partial_payment'
+        else:
+            # Calculate days overdue
+            days_overdue = (datetime.utcnow().date() - latest_invoice.generated_at.date()).days
+            if days_overdue <= 5:
+                status = 'first_5_days'
+            elif days_overdue <= 10:
+                status = 'next_5_days'
+            else:
+                status = 'after_10_days'
+        
+        student_dues.append({
+            'student': student,
+            'status': status,
+            'latest_invoice': latest_invoice
+        })
+    
+    return jsonify({'students': [
+        {
+            'id': item['student'].id,
+            'name': item['student'].full_name,
+            'parent_name': item['student'].parent_name,
+            'parent_whatsapp': item['student'].parent_whatsapp,
+            'status': item['status'],
+            'total_amount': item['latest_invoice'].total_amount if item['latest_invoice'] else 0,
+            'amount_paid': item['latest_invoice'].amount_paid if item['latest_invoice'] else 0
+        } for item in student_dues
+    ]})
+
+@app.route('/dues/tutors')
+@login_required
+@permission_required(Permission.VIEW_TUTORS)
+def dues_tutors():
+    tutors = Tutor.query.filter_by(status='Active').all()
+    tutor_dues = []
+    
+    for tutor in tutors:
+        # Calculate dues status
+        latest_receipt = TutorReceipt.query.filter_by(tutor_id=tutor.id).order_by(TutorReceipt.generated_at.desc()).first()
+        
+        if not latest_receipt:
+            status = 'just_joined'
+        elif latest_receipt.status == 'Paid':
+            # Check if attended after payment
+            last_attendance = Attendance.query.filter_by(tutor_id=tutor.id).order_by(Attendance.date_recorded.desc()).first()
+            if last_attendance and last_attendance.date_recorded > latest_receipt.generated_at.date():
+                status = 'paid_attended'
+            else:
+                status = 'paid_no_class'
+        else:
+            # Calculate days overdue
+            days_overdue = (datetime.utcnow().date() - latest_receipt.generated_at.date()).days
+            if days_overdue <= 5:
+                status = 'first_5_days'
+            elif days_overdue <= 10:
+                status = 'next_5_days'
+            else:
+                status = 'after_10_days'
+        
+        tutor_dues.append({
+            'tutor': tutor,
+            'status': status,
+            'latest_receipt': latest_receipt
+        })
+    
+    return jsonify({'tutors': [
+        {
+            'id': item['tutor'].id,
+            'name': item['tutor'].full_name,
+            'mobile': item['tutor'].mobile,
+            'status': item['status'],
+            'total_earnings': item['latest_receipt'].total_earnings if item['latest_receipt'] else 0
+        } for item in tutor_dues
+    ]})
+
+@app.route('/dues/update-status', methods=['POST'])
+@login_required
+@permission_required(Permission.MARK_PAYMENTS)
+def update_dues_status():
+    try:
+        entity_type = request.form['entity_type']  # 'student' or 'tutor'
+        entity_id = int(request.form['entity_id'])
+        new_status = request.form['new_status']
+        
+        if entity_type == 'student':
+            invoice = StudentInvoice.query.filter_by(student_id=entity_id).order_by(StudentInvoice.generated_at.desc()).first()
+            if invoice:
+                if new_status == 'paid':
+                    invoice.status = 'Paid'
+                    invoice.amount_paid = invoice.total_amount
+                elif new_status == 'partial':
+                    invoice.status = 'Partial'
+                    invoice.amount_paid = float(request.form.get('amount_paid', 0))
+                else:
+                    invoice.status = 'Due'
+                    invoice.amount_paid = 0
+        else:
+            receipt = TutorReceipt.query.filter_by(tutor_id=entity_id).order_by(TutorReceipt.generated_at.desc()).first()
+            if receipt:
+                if new_status == 'paid':
+                    receipt.status = 'Paid'
+                else:
+                    receipt.status = 'Due'
+        
+        db.session.commit()
+        flash('Status updated successfully', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating status: {str(e)}', 'error')
+    
+    return redirect(url_for('dues'))
+
+# Data Flush routes
+@app.route('/data-flush')
+@login_required
+@permission_required(Permission.ACCESS_SETTINGS)
+def data_flush():
+    return render_template('data_flush.html')
+
+@app.route('/data-flush/backup', methods=['POST'])
+@login_required
+@permission_required(Permission.ACCESS_SETTINGS)
+def create_backup():
+    try:
+        # Create temporary directory for backup
+        temp_dir = tempfile.mkdtemp()
+        backup_file = os.path.join(temp_dir, 'mentorscue_backup.zip')
+        
+        with zipfile.ZipFile(backup_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            # Export attendance records
+            attendance_records = Attendance.query.all()
+            attendance_data = []
+            for record in attendance_records:
+                attendance_data.append({
+                    'student_id': record.student_id,
+                    'tutor_id': record.tutor_id,
+                    'subject': record.subject,
+                    'start_time': record.start_time.isoformat(),
+                    'end_time': record.end_time.isoformat(),
+                    'duration_minutes': record.duration_minutes,
+                    'rating': record.rating,
+                    'remarks': record.remarks,
+                    'date_recorded': record.date_recorded.isoformat()
+                })
+            
+            # Export invoices
+            invoices = StudentInvoice.query.all()
+            invoice_data = []
+            for invoice in invoices:
+                invoice_data.append({
+                    'student_id': invoice.student_id,
+                    'invoice_number': invoice.invoice_number,
+                    'start_date': invoice.start_date.isoformat(),
+                    'end_date': invoice.end_date.isoformat(),
+                    'total_classes': invoice.total_classes,
+                    'total_amount': invoice.total_amount,
+                    'status': invoice.status,
+                    'amount_paid': invoice.amount_paid,
+                    'generated_at': invoice.generated_at.isoformat()
+                })
+            
+            # Export receipts
+            receipts = TutorReceipt.query.all()
+            receipt_data = []
+            for receipt in receipts:
+                receipt_data.append({
+                    'tutor_id': receipt.tutor_id,
+                    'receipt_number': receipt.receipt_number,
+                    'start_date': receipt.start_date.isoformat(),
+                    'end_date': receipt.end_date.isoformat(),
+                    'total_classes': receipt.total_classes,
+                    'total_earnings': receipt.total_earnings,
+                    'status': receipt.status,
+                    'generated_at': receipt.generated_at.isoformat()
+                })
+            
+            # Write data to JSON files in ZIP
+            zipf.writestr('attendance.json', json.dumps(attendance_data, indent=2))
+            zipf.writestr('invoices.json', json.dumps(invoice_data, indent=2))
+            zipf.writestr('receipts.json', json.dumps(receipt_data, indent=2))
+        
+        # Send file to user
+        with open(backup_file, 'rb') as f:
+            backup_data = f.read()
+        
+        # Clean up
+        os.remove(backup_file)
+        os.rmdir(temp_dir)
+        
+        response = make_response(backup_data)
+        response.headers['Content-Type'] = 'application/zip'
+        response.headers['Content-Disposition'] = f'attachment; filename=mentorscue_backup_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip'
+        return response
+        
+    except Exception as e:
+        flash(f'Error creating backup: {str(e)}', 'error')
+        return redirect(url_for('data_flush'))
+
+@app.route('/data-flush/execute', methods=['POST'])
+@login_required
+@permission_required(Permission.ACCESS_SETTINGS)
+def execute_data_flush():
+    try:
+        flush_type = request.form['flush_type']
+        
+        if flush_type == '3_months':
+            cutoff_date = datetime.utcnow() - timedelta(days=90)
+        elif flush_type == '6_months':
+            cutoff_date = datetime.utcnow() - timedelta(days=180)
+        elif flush_type == 'custom':
+            cutoff_date = datetime.strptime(request.form['custom_date'], '%Y-%m-%d')
+        else:
+            flash('Invalid flush type', 'error')
+            return redirect(url_for('data_flush'))
+        
+        # Delete old attendance records
+        deleted_attendance = Attendance.query.filter(Attendance.created_at < cutoff_date).delete()
+        
+        # Delete old invoices (keep core structure)
+        deleted_invoices = StudentInvoice.query.filter(StudentInvoice.generated_at < cutoff_date).delete()
+        
+        # Delete old receipts (keep core structure)
+        deleted_receipts = TutorReceipt.query.filter(TutorReceipt.generated_at < cutoff_date).delete()
+        
+        db.session.commit()
+        
+        flash(f'Data flush completed: {deleted_attendance} attendance records, {deleted_invoices} invoices, {deleted_receipts} receipts deleted', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error during data flush: {str(e)}', 'error')
+    
+    return redirect(url_for('data_flush'))
+
+# Announcements routes
+@app.route('/announcements')
+@login_required
+@permission_required(Permission.ACCESS_SETTINGS)
+def announcements():
+    announcements = Announcement.query.order_by(Announcement.created_at.desc()).all()
+    return render_template('announcements.html', announcements=announcements)
+
+@app.route('/announcements/add', methods=['POST'])
+@login_required
+@permission_required(Permission.ACCESS_SETTINGS)
+def add_announcement():
+    try:
+        announcement = Announcement(
+            title=request.form['title'],
+            content=request.form['content'],
+            created_by=current_user.id
+        )
+        
+        if request.form.get('expiry_date'):
+            announcement.expiry_date = datetime.strptime(request.form['expiry_date'], '%Y-%m-%d').date()
+        
+        db.session.add(announcement)
+        db.session.commit()
+        
+        flash('Announcement added successfully', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error adding announcement: {str(e)}', 'error')
+    
+    return redirect(url_for('announcements'))
+
+@app.route('/announcements/<int:id>/edit', methods=['POST'])
+@login_required
+@permission_required(Permission.ACCESS_SETTINGS)
+def edit_announcement(id):
+    announcement = Announcement.query.get_or_404(id)
+    
+    try:
+        announcement.title = request.form['title']
+        announcement.content = request.form['content']
+        announcement.is_active = bool(request.form.get('is_active'))
+        
+        if request.form.get('expiry_date'):
+            announcement.expiry_date = datetime.strptime(request.form['expiry_date'], '%Y-%m-%d').date()
+        else:
+            announcement.expiry_date = None
+        
+        db.session.commit()
+        flash('Announcement updated successfully', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating announcement: {str(e)}', 'error')
+    
+    return redirect(url_for('announcements'))
+
+@app.route('/announcements/<int:id>/delete', methods=['POST'])
+@login_required
+@permission_required(Permission.ACCESS_SETTINGS)
+def delete_announcement(id):
+    announcement = Announcement.query.get_or_404(id)
+    
+    try:
+        db.session.delete(announcement)
+        db.session.commit()
+        flash('Announcement deleted successfully', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting announcement: {str(e)}', 'error')
+    
+    return redirect(url_for('announcements'))
+
+@app.route('/api/announcements/active')
+@login_required
+def get_active_announcements():
+    """Get active announcements for tutors"""
+    if not current_user.is_tutor_user():
+        return jsonify({'announcements': []})
+    
+    announcements = Announcement.query.filter_by(is_active=True).all()
+    active_announcements = []
+    
+    for announcement in announcements:
+        if not announcement.is_expired():
+            active_announcements.append({
+                'id': announcement.id,
+                'title': announcement.title,
+                'content': announcement.content,
+                'created_at': announcement.created_at.isoformat(),
+                'expiry_date': announcement.expiry_date.isoformat() if announcement.expiry_date else None
+            })
+    
+    return jsonify({'announcements': active_announcements})

@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}Data Flush - MENTORSCUE{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Data Flush Management</h1>
+                <div class="alert alert-warning" role="alert">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Warning:</strong> This action cannot be undone. Always create a backup before proceeding.
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Backup Section -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-download"></i> Create Backup
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-3">
+                                Create a backup of your data before performing any flush operations. 
+                                This will export all attendance records, invoices, and receipts to a ZIP file.
+                            </p>
+                            
+                            <div class="mb-3">
+                                <h6>Backup Contents:</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-check text-success"></i> Attendance Records</li>
+                                    <li><i class="fas fa-check text-success"></i> Student Invoices</li>
+                                    <li><i class="fas fa-check text-success"></i> Tutor Receipts</li>
+                                    <li><i class="fas fa-times text-danger"></i> Student/Tutor Profiles (Not included)</li>
+                                    <li><i class="fas fa-times text-danger"></i> User Accounts (Not included)</li>
+                                </ul>
+                            </div>
+                            
+                            <form method="POST" action="{{ url_for('create_backup') }}">
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i class="fas fa-download"></i> Download Backup
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Flush Section -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-trash"></i> Data Flush Options
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('execute_data_flush') }}" id="flush-form">
+                                <div class="mb-3">
+                                    <label class="form-label">Select Flush Type:</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="flush_type" id="flush-3m" value="3_months" checked>
+                                        <label class="form-check-label" for="flush-3m">
+                                            <strong>3 Months</strong> - Delete records older than 3 months
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="flush_type" id="flush-6m" value="6_months">
+                                        <label class="form-check-label" for="flush-6m">
+                                            <strong>6 Months</strong> - Delete records older than 6 months
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="flush_type" id="flush-custom" value="custom">
+                                        <label class="form-check-label" for="flush-custom">
+                                            <strong>Custom Date</strong> - Delete records older than specific date
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3" id="custom-date-section" style="display: none;">
+                                    <label class="form-label">Select Date:</label>
+                                    <input type="date" class="form-control" name="custom_date" id="custom-date">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <h6>Records to Delete:</h6>
+                                    <ul class="list-unstyled">
+                                        <li><i class="fas fa-check text-danger"></i> Old Attendance Logs</li>
+                                        <li><i class="fas fa-check text-danger"></i> Old Invoice Records</li>
+                                        <li><i class="fas fa-check text-danger"></i> Old Receipt Records</li>
+                                        <li><i class="fas fa-check text-danger"></i> Other Log Timestamps</li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <h6>Records to Keep:</h6>
+                                    <ul class="list-unstyled">
+                                        <li><i class="fas fa-shield-alt text-success"></i> Student Profiles</li>
+                                        <li><i class="fas fa-shield-alt text-success"></i> Tutor Profiles</li>
+                                        <li><i class="fas fa-shield-alt text-success"></i> User Accounts</li>
+                                        <li><i class="fas fa-shield-alt text-success"></i> Roles & Permissions</li>
+                                        <li><i class="fas fa-shield-alt text-success"></i> System Settings</li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="confirm-flush" required>
+                                    <label class="form-check-label" for="confirm-flush">
+                                        <strong>I confirm that I have created a backup and understand this action cannot be undone.</strong>
+                                    </label>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-danger w-100" id="flush-button" disabled>
+                                    <i class="fas fa-trash"></i> Execute Data Flush
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistics Section -->
+                <div class="col-md-12 mt-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-chart-bar"></i> Current Data Statistics
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h4 class="text-primary">{{ Attendance.query.count() }}</h4>
+                                        <p class="text-muted">Total Attendance Records</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h4 class="text-success">{{ StudentInvoice.query.count() }}</h4>
+                                        <p class="text-muted">Total Student Invoices</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h4 class="text-info">{{ TutorReceipt.query.count() }}</h4>
+                                        <p class="text-muted">Total Tutor Receipts</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        {% set total_size = Attendance.query.count() + StudentInvoice.query.count() + TutorReceipt.query.count() %}
+                                        <h4 class="text-warning">{{ total_size }}</h4>
+                                        <p class="text-muted">Total Records</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr>
+                            
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h6>Records by Age (3 Months)</h6>
+                                    {% set three_months_ago = (datetime.utcnow() - timedelta(days=90)) %}
+                                    <p class="text-muted">
+                                        Attendance: {{ Attendance.query.filter(Attendance.created_at < three_months_ago).count() }}<br>
+                                        Invoices: {{ StudentInvoice.query.filter(StudentInvoice.generated_at < three_months_ago).count() }}<br>
+                                        Receipts: {{ TutorReceipt.query.filter(TutorReceipt.generated_at < three_months_ago).count() }}
+                                    </p>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>Records by Age (6 Months)</h6>
+                                    {% set six_months_ago = (datetime.utcnow() - timedelta(days=180)) %}
+                                    <p class="text-muted">
+                                        Attendance: {{ Attendance.query.filter(Attendance.created_at < six_months_ago).count() }}<br>
+                                        Invoices: {{ StudentInvoice.query.filter(StudentInvoice.generated_at < six_months_ago).count() }}<br>
+                                        Receipts: {{ TutorReceipt.query.filter(TutorReceipt.generated_at < six_months_ago).count() }}
+                                    </p>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>Protected Records</h6>
+                                    <p class="text-muted">
+                                        Students: {{ Student.query.count() }}<br>
+                                        Tutors: {{ Tutor.query.count() }}<br>
+                                        Users: {{ User.query.count() }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmFlushModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle"></i> Confirm Data Flush
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <strong>DANGER:</strong> This action will permanently delete selected records and cannot be undone.
+                </div>
+                <p>Are you absolutely sure you want to proceed with the data flush?</p>
+                <p><strong>Flush Type:</strong> <span id="flush-type-display"></span></p>
+                <p><strong>Date Cutoff:</strong> <span id="date-cutoff-display"></span></p>
+                
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="final-confirm" required>
+                    <label class="form-check-label" for="final-confirm">
+                        <strong>I understand this action cannot be undone</strong>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="final-flush-button" disabled>
+                    <i class="fas fa-trash"></i> Execute Flush
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const flushForm = document.getElementById('flush-form');
+    const customDateSection = document.getElementById('custom-date-section');
+    const customDateInput = document.getElementById('custom-date');
+    const confirmFlushCheckbox = document.getElementById('confirm-flush');
+    const flushButton = document.getElementById('flush-button');
+    const finalConfirmCheckbox = document.getElementById('final-confirm');
+    const finalFlushButton = document.getElementById('final-flush-button');
+    
+    // Show/hide custom date section
+    document.querySelectorAll('input[name="flush_type"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'custom') {
+                customDateSection.style.display = 'block';
+                customDateInput.required = true;
+            } else {
+                customDateSection.style.display = 'none';
+                customDateInput.required = false;
+            }
+        });
+    });
+    
+    // Enable/disable flush button based on confirmation
+    confirmFlushCheckbox.addEventListener('change', function() {
+        flushButton.disabled = !this.checked;
+    });
+    
+    // Enable/disable final flush button
+    finalConfirmCheckbox.addEventListener('change', function() {
+        finalFlushButton.disabled = !this.checked;
+    });
+    
+    // Handle form submission
+    flushForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Get selected flush type
+        const flushType = document.querySelector('input[name="flush_type"]:checked').value;
+        let flushTypeDisplay = '';
+        let dateCutoffDisplay = '';
+        
+        if (flushType === '3_months') {
+            flushTypeDisplay = 'Delete records older than 3 months';
+            const cutoff = new Date();
+            cutoff.setMonth(cutoff.getMonth() - 3);
+            dateCutoffDisplay = cutoff.toLocaleDateString();
+        } else if (flushType === '6_months') {
+            flushTypeDisplay = 'Delete records older than 6 months';
+            const cutoff = new Date();
+            cutoff.setMonth(cutoff.getMonth() - 6);
+            dateCutoffDisplay = cutoff.toLocaleDateString();
+        } else if (flushType === 'custom') {
+            flushTypeDisplay = 'Delete records older than custom date';
+            dateCutoffDisplay = customDateInput.value;
+        }
+        
+        document.getElementById('flush-type-display').textContent = flushTypeDisplay;
+        document.getElementById('date-cutoff-display').textContent = dateCutoffDisplay;
+        
+        // Reset final confirmation
+        finalConfirmCheckbox.checked = false;
+        finalFlushButton.disabled = true;
+        
+        // Show confirmation modal
+        const modal = new bootstrap.Modal(document.getElementById('confirmFlushModal'));
+        modal.show();
+    });
+    
+    // Handle final flush execution
+    finalFlushButton.addEventListener('click', function() {
+        // Submit the original form
+        flushForm.submit();
+    });
+});
+</script>
+
+<style>
+.card {
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+}
+
+.btn-success {
+    background-color: #43a24c;
+    border-color: #43a24c;
+}
+
+.btn-success:hover {
+    background-color: #369040;
+    border-color: #369040;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    border-color: #ffeaa7;
+    color: #856404;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+.form-check-input:checked {
+    background-color: #344e80;
+    border-color: #344e80;
+}
+
+.form-check-input:focus {
+    border-color: #344e80;
+    box-shadow: 0 0 0 0.2rem rgba(52, 78, 128, 0.25);
+}
+
+.text-primary {
+    color: #344e80 !important;
+}
+
+.text-success {
+    color: #43a24c !important;
+}
+
+.modal-header.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+.card-header h5 {
+    color: #344e80;
+    font-weight: 600;
+}
+
+.list-unstyled li {
+    padding: 0.25rem 0;
+}
+
+.fas {
+    width: 1.25rem;
+    text-align: center;
+}
+</style>
+{% endblock %}

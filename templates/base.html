@@ -80,6 +80,33 @@
                             </a>
                         </li>
                         {% endif %}
+                        
+                        {% if current_user.has_permission(Permission.VIEW_STUDENTS) %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dues') }}">
+                                <i class="fas fa-money-bill-wave me-1"></i>Dues
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% if current_user.has_permission(Permission.ACCESS_SETTINGS) %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="settingsDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-cog me-1"></i>Settings
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{{ url_for('settings') }}">
+                                    <i class="fas fa-palette me-1"></i>Theme & Colors
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('announcements') }}">
+                                    <i class="fas fa-bullhorn me-1"></i>Announcements
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('data_flush') }}">
+                                    <i class="fas fa-broom me-1"></i>Data Flush
+                                </a></li>
+                            </ul>
+                        </li>
+                        {% endif %}
                     {% endif %}
                 </ul>
                 

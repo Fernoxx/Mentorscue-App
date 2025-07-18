@@ -241,9 +241,19 @@ function showSearchError() {
 
 // Dashboard functions
 function refreshDashboardStats() {
+    // Check if we're on the admin dashboard
+    if (!document.getElementById('total-students')) {
+        return;
+    }
+    
     // Refresh statistics cards
-    fetch('/api/dashboard/stats')
-        .then(response => response.json())
+    fetch('/api/admin/stats')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
             updateDashboardStats(data);
         })

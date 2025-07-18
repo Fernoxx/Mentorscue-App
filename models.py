@@ -268,6 +268,95 @@ def create_default_roles():
     db.session.commit()
     logging.info("Default roles created successfully")
 
+class Announcement(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    expiry_date = db.Column(db.Date, nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    creator = db.relationship('User', backref='announcements')
+    
+    def is_expired(self):
+        if self.expiry_date:
+            return datetime.utcnow().date() > self.expiry_date
+        return False
+
+class Settings(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(100), unique=True, nullable=False)
+    value = db.Column(db.Text, nullable=False)
+    category = db.Column(db.String(50), nullable=False)
+    description = db.Column(db.String(255), nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    @classmethod
+    def get_theme_settings(cls):
+        """Get all theme-related settings"""
+        return cls.query.filter_by(category='theme').all()
+    
+    @classmethod
+    def get_setting(cls, key, default=None):
+        """Get a specific setting value"""
+        setting = cls.query.filter_by(key=key).first()
+        return setting.value if setting else default
+    
+    @classmethod
+    def set_setting(cls, key, value, category='general', description=None):
+        """Set a setting value"""
+        setting = cls.query.filter_by(key=key).first()
+        if setting:
+            setting.value = value
+            setting.updated_at = datetime.utcnow()
+        else:
+            setting = cls(key=key, value=value, category=category, description=description)
+            db.session.add(setting)
+        db.session.commit()
+
+def create_default_settings():
+    """Create default theme and system settings"""
+    default_settings = {
+        'theme': {
+            'primary_color': '#344e80',
+            'secondary_color': '#43a24c',
+            'background_color': '#cedce7',
+            'text_color': '#293958',
+            'title_font': 'Cormorant Garamond',
+            'body_font': 'Figtree'
+        },
+        'dues_colors': {
+            'just_joined': '#ffffff',
+            'first_5_days': '#fff3cd',
+            'next_5_days': '#ffeaa7',
+            'after_10_days': '#ff6b6b',
+            'partial_payment': '#e17055',
+            'paid_attended': '#00b894',
+            'paid_no_class': '#006663'
+        },
+        'general': {
+            'invoice_prefix': 'MC-INV-',
+            'receipt_prefix': 'MC-REC-'
+        }
+    }
+    
+    for category, settings in default_settings.items():
+        for key, value in settings.items():
+            setting_key = f"{category}_{key}"
+            existing = Settings.query.filter_by(key=setting_key).first()
+            if not existing:
+                setting = Settings(
+                    key=setting_key,
+                    value=value,
+                    category=category,
+                    description=f"Default {key.replace('_', ' ').title()}"
+                )
+                db.session.add(setting)
+    
+    db.session.commit()
+    logging.info("Default settings created successfully")
+
 def create_admin_user():
     """Create default admin user if it doesn't exist"""
     admin_user = User.query.filter_by(username='admin').first()

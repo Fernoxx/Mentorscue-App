@@ -51,10 +51,11 @@ def init_database():
         db.create_all()
         logging.info("Database tables created")
         
-        # Create default roles and admin user
+        # Create default roles, settings and admin user
         try:
-            from models import create_default_roles, create_admin_user
+            from models import create_default_roles, create_admin_user, create_default_settings
             create_default_roles()
+            create_default_settings()
             create_admin_user()
             logging.info("Default data initialized successfully")
         except Exception as e:

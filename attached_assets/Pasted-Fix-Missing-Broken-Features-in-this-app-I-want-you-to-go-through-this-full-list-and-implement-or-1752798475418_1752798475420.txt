@@ -1,0 +1,315 @@
+Fix Missing & Broken Features in this app
+
+ I want you to go through this full list and implement or repair everything mentioned below, fixing all bugs, adding all missing features, and following the detailed blueprint accurately. Below is the list of missing, broken, or incomplete elements that must be corrected immediately:
+
+
+---
+
+1. ⚙️ SETTINGS SECTION – COMPLETELY MISSING
+
+You have not created the Settings section. Please implement the full page with the following capabilities:
+
+➤ Color Theme Configuration
+
+Add inputs to allow the admin to customize:
+
+Primary Color (#344e80)
+
+Secondary Color (#43a24c)
+
+Background Color (#cedce7)
+
+Text Color (#293958)
+
+
+Font selectors:
+
+Title Font: Cormorant Garamond
+
+Body Font: Figtree
+
+
+Show live preview on the page
+
+Include a “Reset to Default” button
+
+✅ All theme settings should be stored in a lightweight config file (not the database)
+
+
+➤ Due Color Customization
+
+Allow editing of 7 due status colors
+
+Color pickers for background and border colors
+
+Show preview of how each status will look
+
+Reset to default option
+
+Changes must apply live across the app with no reload
+
+
+➤ Invoice Prefix Setting
+
+Add a field to customize the invoice prefix (e.g., MC-INV-)
+
+This should reflect in both student and tutor invoices
+
+
+
+
+---
+
+2. 🧹 DATA FLUSH FEATURE – INCOMPLETE
+
+Only the button exists, but none of the logic or filters were built. Implement the full Data Flush system as follows:
+
+Add options to delete only:
+
+Records older than 3 months
+
+Records older than 6 months
+
+Custom date selector
+
+
+Records to delete:
+
+Attendance logs
+
+Timestamps
+
+Old invoice records
+
+Other non-core logs
+
+
+DO NOT delete:
+
+Student profiles
+
+Tutor profiles
+
+Core configuration or roles
+
+
+Add a confirmation modal
+
+✅ Include a download button to export a ZIP backup before deletion
+
+Ensure backup only contains necessary data, excluding cache or orphaned metadata
+
+
+
+---
+
+3. 📊 DUES SECTION – COMPLETELY MISSING
+
+You must add the global Dues section, split into two tabs: Students and Tutors
+
+Each tab must:
+
+List all students/tutors with color-coded payment status (7 levels)
+
+Color must reflect a mix of:
+
+Time since invoice was due
+
+Attendance after invoice
+
+Partial payment conditions
+
+
+
+Color Legend:
+
+1. White – Just joined (before first invoice)
+
+
+2. Light Yellow – First 5 days after invoice
+
+
+3. Dark Yellow – Next 5 days overdue
+
+Turns orange border if class attended without payment
+
+
+
+4. Red – After 10+ days, with red border if still attending
+
+
+5. Light Purple – Partial payment made (expires in 5 days)
+
+
+6. Light Green – Paid and attended class
+
+
+7. Dark Green – Paid but no class taken
+
+
+
+Dues UI Features:
+
+Search bar by name
+
+Filter by color status
+
+Sort by overdue duration
+
+Manual override of status (admin can manually set any status)
+
+Button to “Mark as Paid” or “Partial”
+
+This does not affect the current model of billing cycle end date or start date, but only for visualization..
+
+
+
+---
+
+4. 🎨 UI + STYLE ISSUES
+
+The current UI has broken colors and unreadable text.
+
+Fix the following:
+
+Some sections have black text on dark backgrounds
+
+Fonts are not applied correctly
+
+Use:
+
+Title font: Cormorant Garamond
+
+Body font: Figtree
+
+
+Apply proper spacing, padding, margin
+
+All sections must follow consistent theming:
+
+Background: #cedce7
+
+Primary: #344e80
+
+Secondary: #43a24c
+
+Text: #293958
+
+
+
+Make the UI clean, responsive, and readable across all pages.
+
+
+---
+
+7. 📄 TEMPLATE FILES MISSING
+
+Please ensure you create these missing templates if not already present:
+
+add_edit_student.html
+
+add_edit_tutor.html
+
+student_detail.html, tutor_detail.html
+
+dues.html, student_due_profile.html, tutor_due_profile.html
+
+invoices.html (global list)
+
+settings.html, add_role.html, add_user.html
+
+data_flush.html
+
+announcements.html
+
+
+If you forgot or missed any, please create them now.
+
+
+---
+
+8. 📣 ANNOUNCEMENTS
+
+This feature is missing or underbuilt. Please add:
+
+Admin can add, edit, delete announcements
+
+Each announcement can:
+
+Expire after a certain date
+
+Be deactivated manually
+
+
+Announcements are shown on top of tutor dashboards
+
+Automatically hides after expiry
+
+Lightweight implementation
+
+Confirmation before delete
+
+
+
+I am getting an error of tutor.user_id error.. i don't know what it means and please fix it (don't link a tutor to any users except students.. tutor could only be linked to students.
+
+
+---
+
+9. 🧠 FINAL INSTRUCTION
+
+Please generate all required:
+
+Flask backend routes
+
+Models
+
+Templates (HTML/Jinja2)
+
+Config files
+
+AJAX scripts where required (e.g., tutor search dropdown)
+
+
+
+
+✅ Ensure:
+
+No 404 or 500 errors remain
+
+App is deployable on Render or Railway
+
+Fully working features as per specs above
+
+UI is clean and readable
+
+No core features from blueprint are omitted
+
+
+Database Fixes
+
+Regenerate schema to match models
+
+Avoid circular imports
+
+Ensure missing models like Invoice and Announcement exist
+
+Fix broken routes (e.g., student add)
+
+Ensure no usage of non-existent columns like tutor.user_id
+
+And there are many internal errors. When adding student, when accessing dashboard of an added user (assigned to a custom role, or system role too).. also fix these like internal errors step by step..
+
+
+---
+
+✅ Final Instruction:
+
+Please regenerate all required code files, HTML templates, models, migrations, routing, and UI for these features.
+
+💡 Only generate invoices, status updates, when any authenticated user logs in (except tutors).
+
+🔁 If any of these features or templates were skipped earlier, make sure they’re now implemented fully.
+
+✅ App should be ready to deploy on Render or Railway, fully working with no crashes.
+---

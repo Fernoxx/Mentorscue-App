@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - MENTORSCUE{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Settings</h1>
+                <form method="POST" action="{{ url_for('reset_settings') }}" class="d-inline">
+                    <button type="submit" class="btn btn-outline-danger" 
+                            onclick="return confirm('Are you sure you want to reset all settings to default values?')">
+                        <i class="fas fa-undo"></i> Reset to Default
+                    </button>
+                </form>
+            </div>
+
+            <div class="row">
+                <!-- Theme Settings -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-palette"></i> Theme Configuration
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('update_settings') }}" id="theme-form">
+                                <div class="mb-3">
+                                    <label class="form-label">Primary Color</label>
+                                    <input type="color" name="primary_color" class="form-control form-control-color" 
+                                           value="{{ Settings.get_setting('theme_primary_color', '#344e80') }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Secondary Color</label>
+                                    <input type="color" name="secondary_color" class="form-control form-control-color" 
+                                           value="{{ Settings.get_setting('theme_secondary_color', '#43a24c') }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Background Color</label>
+                                    <input type="color" name="background_color" class="form-control form-control-color" 
+                                           value="{{ Settings.get_setting('theme_background_color', '#cedce7') }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Text Color</label>
+                                    <input type="color" name="text_color" class="form-control form-control-color" 
+                                           value="{{ Settings.get_setting('theme_text_color', '#293958') }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Title Font</label>
+                                    <select name="title_font" class="form-select">
+                                        <option value="Cormorant Garamond" {% if Settings.get_setting('theme_title_font', 'Cormorant Garamond') == 'Cormorant Garamond' %}selected{% endif %}>Cormorant Garamond</option>
+                                        <option value="Arial" {% if Settings.get_setting('theme_title_font', 'Cormorant Garamond') == 'Arial' %}selected{% endif %}>Arial</option>
+                                        <option value="Georgia" {% if Settings.get_setting('theme_title_font', 'Cormorant Garamond') == 'Georgia' %}selected{% endif %}>Georgia</option>
+                                        <option value="Times New Roman" {% if Settings.get_setting('theme_title_font', 'Cormorant Garamond') == 'Times New Roman' %}selected{% endif %}>Times New Roman</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Body Font</label>
+                                    <select name="body_font" class="form-select">
+                                        <option value="Figtree" {% if Settings.get_setting('theme_body_font', 'Figtree') == 'Figtree' %}selected{% endif %}>Figtree</option>
+                                        <option value="Arial" {% if Settings.get_setting('theme_body_font', 'Figtree') == 'Arial' %}selected{% endif %}>Arial</option>
+                                        <option value="Helvetica" {% if Settings.get_setting('theme_body_font', 'Figtree') == 'Helvetica' %}selected{% endif %}>Helvetica</option>
+                                        <option value="Roboto" {% if Settings.get_setting('theme_body_font', 'Figtree') == 'Roboto' %}selected{% endif %}>Roboto</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Save Theme
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dues Colors -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-circle"></i> Dues Color Configuration
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('update_settings') }}" id="dues-form">
+                                <div class="mb-3">
+                                    <label class="form-label">Just Joined (White)</label>
+                                    <input type="color" name="just_joined" class="form-control form-control-color" 
+                                           value="{{ Settings.get_setting('dues_colors_just_joined', '#ffffff') }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">First 5 Days (Light Yellow)</label>
+                                    <input type="color" name="first_5_days" class="form-control form-control-color" 
+                                           value="{{ Settings.get_setting('dues_colors_first_5_days', '#fff3cd') }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Next 5 Days (Dark Yellow)</label>
+                                    <input type="color" name="next_5_days" class="form-control form-control-color" 
+                                           value="{{ Settings.get_setting('dues_colors_next_5_days', '#ffeaa7') }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">After 10+ Days (Red)</label>
+                                    <input type="color" name="after_10_days" class="form-control form-control-color" 
+                                           value="{{ Settings.get_setting('dues_colors_after_10_days', '#ff6b6b') }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Partial Payment (Light Purple)</label>
+                                    <input type="color" name="partial_payment" class="form-control form-control-color" 
+                                           value="{{ Settings.get_setting('dues_colors_partial_payment', '#e17055') }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Paid & Attended (Light Green)</label>
+                                    <input type="color" name="paid_attended" class="form-control form-control-color" 
+                                           value="{{ Settings.get_setting('dues_colors_paid_attended', '#00b894') }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Paid No Class (Dark Green)</label>
+                                    <input type="color" name="paid_no_class" class="form-control form-control-color" 
+                                           value="{{ Settings.get_setting('dues_colors_paid_no_class', '#006663') }}">
+                                </div>
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-save"></i> Save Colors
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- General Settings -->
+                <div class="col-md-12 mt-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-cogs"></i> General Settings
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('update_settings') }}" id="general-form">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Invoice Prefix</label>
+                                            <input type="text" name="invoice_prefix" class="form-control" 
+                                                   value="{{ Settings.get_setting('general_invoice_prefix', 'MC-INV-') }}"
+                                                   placeholder="e.g., MC-INV-">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Receipt Prefix</label>
+                                            <input type="text" name="receipt_prefix" class="form-control" 
+                                                   value="{{ Settings.get_setting('general_receipt_prefix', 'MC-REC-') }}"
+                                                   placeholder="e.g., MC-REC-">
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Save Settings
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Preview -->
+                <div class="col-md-12 mt-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-eye"></i> Live Preview
+                            </h5>
+                        </div>
+                        <div class="card-body" id="live-preview">
+                            <div class="preview-container" style="padding: 20px; border-radius: 10px; background-color: {{ Settings.get_setting('theme_background_color', '#cedce7') }}; color: {{ Settings.get_setting('theme_text_color', '#293958') }};">
+                                <h3 style="font-family: '{{ Settings.get_setting('theme_title_font', 'Cormorant Garamond') }}'; color: {{ Settings.get_setting('theme_primary_color', '#344e80') }};">Sample Title</h3>
+                                <p style="font-family: '{{ Settings.get_setting('theme_body_font', 'Figtree') }}';">This is how your content will look with the selected theme settings.</p>
+                                <div class="dues-preview">
+                                    <h6>Dues Status Colors:</h6>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="p-2 mb-2 rounded" style="background-color: {{ Settings.get_setting('dues_colors_just_joined', '#ffffff') }}; border: 1px solid #ddd;">Just Joined</div>
+                                            <div class="p-2 mb-2 rounded" style="background-color: {{ Settings.get_setting('dues_colors_first_5_days', '#fff3cd') }};">First 5 Days</div>
+                                            <div class="p-2 mb-2 rounded" style="background-color: {{ Settings.get_setting('dues_colors_next_5_days', '#ffeaa7') }};">Next 5 Days</div>
+                                            <div class="p-2 mb-2 rounded" style="background-color: {{ Settings.get_setting('dues_colors_after_10_days', '#ff6b6b') }}; color: white;">After 10+ Days</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="p-2 mb-2 rounded" style="background-color: {{ Settings.get_setting('dues_colors_partial_payment', '#e17055') }}; color: white;">Partial Payment</div>
+                                            <div class="p-2 mb-2 rounded" style="background-color: {{ Settings.get_setting('dues_colors_paid_attended', '#00b894') }}; color: white;">Paid & Attended</div>
+                                            <div class="p-2 mb-2 rounded" style="background-color: {{ Settings.get_setting('dues_colors_paid_no_class', '#006663') }}; color: white;">Paid No Class</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Live preview update
+    const themeInputs = document.querySelectorAll('#theme-form input, #theme-form select');
+    const duesInputs = document.querySelectorAll('#dues-form input');
+    
+    function updatePreview() {
+        const preview = document.getElementById('live-preview');
+        const container = preview.querySelector('.preview-container');
+        const title = container.querySelector('h3');
+        const body = container.querySelector('p');
+        
+        // Update theme colors
+        const primaryColor = document.querySelector('[name="primary_color"]').value;
+        const backgroundColor = document.querySelector('[name="background_color"]').value;
+        const textColor = document.querySelector('[name="text_color"]').value;
+        const titleFont = document.querySelector('[name="title_font"]').value;
+        const bodyFont = document.querySelector('[name="body_font"]').value;
+        
+        container.style.backgroundColor = backgroundColor;
+        container.style.color = textColor;
+        title.style.color = primaryColor;
+        title.style.fontFamily = titleFont;
+        body.style.fontFamily = bodyFont;
+        
+        // Update dues colors
+        const duesPreview = container.querySelectorAll('.dues-preview .col-md-6 div');
+        const duesColors = [
+            document.querySelector('[name="just_joined"]').value,
+            document.querySelector('[name="first_5_days"]').value,
+            document.querySelector('[name="next_5_days"]').value,
+            document.querySelector('[name="after_10_days"]').value,
+            document.querySelector('[name="partial_payment"]').value,
+            document.querySelector('[name="paid_attended"]').value,
+            document.querySelector('[name="paid_no_class"]').value
+        ];
+        
+        duesPreview.forEach((div, index) => {
+            if (index < duesColors.length) {
+                div.style.backgroundColor = duesColors[index];
+            }
+        });
+    }
+    
+    themeInputs.forEach(input => {
+        input.addEventListener('change', updatePreview);
+    });
+    
+    duesInputs.forEach(input => {
+        input.addEventListener('change', updatePreview);
+    });
+});
+</script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Figtree:wght@300;400;500;600;700&display=swap');
+
+.form-control-color {
+    width: 100%;
+    height: 40px;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    cursor: pointer;
+}
+
+.preview-container {
+    transition: all 0.3s ease;
+}
+
+.dues-preview .p-2 {
+    transition: all 0.3s ease;
+}
+
+.card-header h5 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 600;
+}
+
+.btn {
+    font-family: 'Figtree', sans-serif;
+}
+
+body {
+    font-family: 'Figtree', sans-serif;
+    background-color: #cedce7;
+    color: #293958;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.btn-primary {
+    background-color: #344e80;
+    border-color: #344e80;
+}
+
+.btn-primary:hover {
+    background-color: #293958;
+    border-color: #293958;
+}
+
+.btn-success {
+    background-color: #43a24c;
+    border-color: #43a24c;
+}
+
+.btn-success:hover {
+    background-color: #369040;
+    border-color: #369040;
+}
+</style>
+{% endblock %}
